@@ -3,6 +3,7 @@
 *.md
 *.txt
 !requirements.txt
+!initial.txt
 
 
 # Byte-compiled / optimized / DLL files
