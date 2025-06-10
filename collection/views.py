@@ -4,10 +4,28 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
+from django.core.files.base import ContentFile
 from image_upload.models import Image
 from image_upload.forms import ImageEditForm
 from tags.models import Tag
 import os
+import re
+
+def to_camel_case(text):
+    """Convert text to camelCase format"""
+    if not text:
+        return "unknown"
+    # Remove special characters and split by spaces/underscores/hyphens
+    words = re.split(r'[^a-zA-Z0-9]+', str(text).strip())
+    # Filter out empty strings
+    words = [word for word in words if word]
+    if not words:
+        return "unknown"
+    # First word lowercase, rest title case
+    camel_case = words[0].lower()
+    for word in words[1:]:
+        camel_case += word.capitalize()
+    return camel_case
 
 def gallery(request):
     """Gallery view with search and filtering"""
@@ -68,12 +86,52 @@ def gallery(request):
 def edit_image(request, image_id):
     """Edit an existing image - staff only"""
     image = get_object_or_404(Image, id=image_id)
+    original_path = image.image.path if image.image else None
     
     if request.method == 'POST':
         form = ImageEditForm(request.POST, instance=image)
         if form.is_valid():
-            form.save()
-            messages.success(request, f'Successfully updated "{image.name}"!')
+            # Save the form but don't commit yet
+            updated_image = form.save(commit=False)
+            
+            # Check if we need to rename the file due to metadata changes
+            if original_path and os.path.exists(original_path):
+                # Get file extension
+                _, ext = os.path.splitext(original_path)
+                
+                # Create new filename using camelCase format
+                publisher = to_camel_case(updated_image.publisher)
+                range_name = to_camel_case(updated_image.range)
+                name = to_camel_case(updated_image.name)
+                
+                # Create filename in format: publisher_range_name_initial.ext
+                new_filename = f"{publisher}_{range_name}_{name}_initial{ext}"
+                
+                # Check if filename needs to change
+                current_filename = os.path.basename(original_path)
+                if current_filename != new_filename:
+                    # Read the existing file content
+                    with open(original_path, 'rb') as f:
+                        file_content = f.read()
+                    
+                    # Delete the old file
+                    try:
+                        os.remove(original_path)
+                    except OSError:
+                        pass  # File might already be gone
+                    
+                    # Save with new filename
+                    updated_image.image.save(new_filename, ContentFile(file_content), save=False)
+                    
+                    messages.info(request, f'File renamed to "{new_filename}"')
+            
+            # Save the updated image
+            updated_image.save()
+            
+            # Save many-to-many relationships
+            form.save_m2m()
+            
+            messages.success(request, f'Successfully updated "{updated_image.name}"!')
             return redirect('collection:gallery')
     else:
         form = ImageEditForm(instance=image)
