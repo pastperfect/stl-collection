@@ -1,7 +1,9 @@
 from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from image_upload.models import Image
 
+@login_required
 def image_detail(request, image_id):
     """Show detailed view of an image"""
     image = get_object_or_404(Image, id=image_id)

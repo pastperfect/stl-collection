@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+
+{% block title %}STL Collection Manager{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="row">
+    <div class="col-12">
+        <div class="hero-section bg-primary text-white rounded-4 p-5 mb-5 position-relative overflow-hidden">
+            <div class="hero-content position-relative z-index-1">
+                <div class="row align-items-center">
+                    <div class="col-lg-8">
+                        <h1 class="display-3 fw-bold mb-4">
+                            <i class="bi bi-box-seam me-3"></i>
+                            STL Collection Manager
+                        </h1>
+                        <p class="lead fs-4 mb-4">
+                            Organize, manage, and discover your 3D STL file collections with our powerful collection management system.
+                        </p>
+                        <p class="fs-5 mb-4 opacity-90">
+                            Perfect for 3D printing enthusiasts, designers, and makers who need to keep track of their growing digital asset library.
+                        </p>
+                        <div class="d-flex flex-column flex-sm-row gap-3">
+                            <a href="{% url 'login' %}" class="btn btn-light btn-lg px-4 py-3">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>
+                                Sign In to Your Collection
+                            </a>
+                            <button class="btn btn-outline-light btn-lg px-4 py-3" data-bs-toggle="modal" data-bs-target="#featuresModal">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Learn More
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 text-center">
+                        <i class="bi bi-archive display-1 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+            <!-- Background Pattern -->
+        </div>
+    </div>
+</div>
+
+
+<!-- Features Preview -->
+<div class="row mb-5">
+    <div class="col-12 text-center mb-4">
+        <h2 class="fw-bold">Key Features</h2>
+        <p class="text-muted">Everything you need to manage your STL collection</p>
+    </div>
+    <div class="col-lg-4 mb-4">
+        <div class="text-center">
+            <div class="bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                <i class="bi bi-upload text-warning" style="font-size: 2rem;"></i>
+            </div>
+            <h4 class="fw-bold">Easy Upload</h4>
+            <p class="text-muted">Upload and organize your STL files with metadata, tags, and descriptions.</p>
+        </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+        <div class="text-center">
+            <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                <i class="bi bi-search text-info" style="font-size: 2rem;"></i>
+            </div>
+            <h4 class="fw-bold">Smart Search</h4>
+            <p class="text-muted">Find your files quickly with advanced filtering by tags, publisher, and range.</p>
+        </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+        <div class="text-center">
+            <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                <i class="bi bi-grid text-danger" style="font-size: 2rem;"></i>
+            </div>
+            <h4 class="fw-bold">Gallery View</h4>
+            <p class="text-muted">Browse your collection in a beautiful grid layout with thumbnails and details.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Features Modal -->
+<div class="modal fade" id="featuresModal" tabindex="-1" aria-labelledby="featuresModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="featuresModalLabel">
+                    <i class="bi bi-info-circle me-2"></i>
+                    STL Collection Manager Features
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="bi bi-upload text-primary me-2"></i>File Management</h6>
+                        <ul class="list-unstyled ms-4">
+                            <li>• Upload STL files with previews</li>
+                            <li>• Add metadata and descriptions</li>
+                            <li>• Organize by publisher and range</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="bi bi-tags text-success me-2"></i>Smart Tagging</h6>
+                        <ul class="list-unstyled ms-4">
+                            <li>• Create custom tag categories</li>
+                            <li>• Color-coded organization</li>
+                            <li>• Bulk tag assignment</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="bi bi-search text-info me-2"></i>Advanced Search</h6>
+                        <ul class="list-unstyled ms-4">
+                            <li>• Filter by multiple criteria</li>
+                            <li>• Quick search across all fields</li>
+                            <li>• Save search preferences</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="bi bi-shield-check text-warning me-2"></i>Access Control</h6>
+                        <ul class="list-unstyled ms-4">
+                            <li>• User authentication required</li>
+                            <li>• Admin privileges for management</li>
+                            <li>• Secure file storage</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="{% url 'login' %}" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>
+                    Get Started
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

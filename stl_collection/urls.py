@@ -22,7 +22,8 @@ from . import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.landing_page, name='landing_page'),
+    path('', views.public_landing, name='public_landing'),
+    path('home/', views.landing_page, name='home'),
     path('collection/', include('collection.urls')),
     path('upload/', include('image_upload.urls')),
     path('tags/', include('tags.urls')),

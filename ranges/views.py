@@ -1,9 +1,11 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from image_upload.models import Image
 
+@login_required
 def range_list(request):
     """List all ranges with counts, search and filtering"""
     # Get all ranges with image counts
@@ -80,6 +82,7 @@ def range_list(request):
         'total_images': total_images,
     })
 
+@login_required
 def range_detail(request, range_name):
     """Show detailed view of a specific range"""
     # Get all images in this range

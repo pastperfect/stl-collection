@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
@@ -27,6 +28,7 @@ def to_camel_case(text):
         camel_case += word.capitalize()
     return camel_case
 
+@login_required
 def gallery(request):
     """Gallery view with search and filtering"""
     images = Image.objects.all()

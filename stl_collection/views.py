@@ -1,9 +1,25 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
 from image_upload.models import Image
 from tags.models import Tag
 
+def public_landing(request):
+    """Public landing page for unauthenticated users"""
+    if request.user.is_authenticated:
+        return redirect('home')
+    
+    # Show basic stats for public view
+    total_images = Image.objects.count()
+    total_tags = Tag.objects.count()
+    
+    return render(request, 'public_landing.html', {
+        'total_images': total_images,
+        'total_tags': total_tags,
+    })
+
+@login_required
 def landing_page(request):
-    """Landing page showing the latest 4 uploaded images"""
+    """Authenticated home page showing the latest 4 uploaded images"""
     latest_images = Image.objects.order_by('-upload_date')[:4]
     
     # Statistics
