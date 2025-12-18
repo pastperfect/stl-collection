@@ -1,4 +1,4 @@
-# STL Collection Bulk Operations Script
+ # STL Collection Bulk Operations Script
 # This script provides functions to process image files from directory structures
 # and perform bulk operations on the SQLite database
 

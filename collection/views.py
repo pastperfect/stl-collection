@@ -6,11 +6,12 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
 from django.core.files.base import ContentFile
-from image_upload.models import Image
-from image_upload.forms import ImageEditForm
+from image_upload.models import Entry, Image
+from image_upload.forms import EntryEditForm
 from tags.models import Tag
 import os
 import re
+import uuid
 
 def to_camel_case(text):
     """Convert text to camelCase format"""
@@ -31,45 +32,47 @@ def to_camel_case(text):
 @login_required
 def gallery(request):
     """Gallery view with search and filtering"""
-    images = Image.objects.all()
+    entries = Entry.objects.all()
     
     # Search functionality
     search_query = request.GET.get('search', '')
     if search_query:
-        images = images.filter(
+        entries = entries.filter(
             Q(name__icontains=search_query) |
             Q(publisher__icontains=search_query) |
             Q(range__icontains=search_query) |
             Q(tags__name__icontains=search_query)
         ).distinct()
-      # Filter by publisher
+    
+    # Filter by publisher
     publisher_filter = request.GET.get('publisher', '')
     if publisher_filter:
-        images = images.filter(publisher__icontains=publisher_filter)
+        entries = entries.filter(publisher__icontains=publisher_filter)
     
     # Filter by range
     range_filter = request.GET.get('range', '')
     if range_filter:
-        images = images.filter(range__icontains=range_filter)
+        entries = entries.filter(range__icontains=range_filter)
     
-    # Filter by tags (AND logic - image must have ALL selected tags)
+    # Filter by tags (AND logic - entry must have ALL selected tags)
     tag_filter = request.GET.getlist('tags')
     if tag_filter:
         for tag in tag_filter:
-            images = images.filter(tags=tag)
-        images = images.distinct()
-      # Get filter options for dropdowns
-    publishers = Image.objects.exclude(
+            entries = entries.filter(tags=tag)
+        entries = entries.distinct()
+    
+    # Get filter options for dropdowns
+    publishers = Entry.objects.exclude(
         Q(publisher__isnull=True) | Q(publisher__exact='')
     ).values_list('publisher', flat=True).distinct().order_by('publisher')
     
-    ranges = Image.objects.exclude(
+    ranges = Entry.objects.exclude(
         Q(range__isnull=True) | Q(range__exact='')
     ).values_list('range', flat=True).distinct().order_by('range')
     all_tags = Tag.objects.all()
     
     # Pagination
-    paginator = Paginator(images, 12)
+    paginator = Paginator(entries, 12)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -86,87 +89,84 @@ def gallery(request):
 
 @staff_member_required
 def edit_image(request, image_id):
-    """Edit an existing image - staff only"""
-    image = get_object_or_404(Image, id=image_id)
-    original_path = image.image.path if image.image else None
+    """Edit an existing entry - staff only"""
+    # Accept both entry_id and image_id for backwards compatibility
+    # Try to get Entry by image_id (which is actually entry_id now)
+    entry = get_object_or_404(Entry, id=image_id)
     
     if request.method == 'POST':
-        form = ImageEditForm(request.POST, instance=image)
+        form = EntryEditForm(request.POST, instance=entry)
         if form.is_valid():
-            # Save the form but don't commit yet
-            updated_image = form.save(commit=False)
+            # Save the entry
+            updated_entry = form.save()
             
-            # Check if we need to rename the file due to metadata changes
-            if original_path and os.path.exists(original_path):
-                # Get file extension
-                _, ext = os.path.splitext(original_path)
-                
-                # Create new filename using camelCase format
-                publisher = to_camel_case(updated_image.publisher)
-                range_name = to_camel_case(updated_image.range)
-                name = to_camel_case(updated_image.name)
-                
-                # Create filename in format: publisher_range_name_initial.ext
-                new_filename = f"{publisher}_{range_name}_{name}_initial{ext}"
-                
-                # Check if filename needs to change
-                current_filename = os.path.basename(original_path)
-                if current_filename != new_filename:
-                    # Read the existing file content
-                    with open(original_path, 'rb') as f:
-                        file_content = f.read()
+            # Update denormalized fields in all associated images
+            entry.images.update(
+                name=updated_entry.name,
+                publisher=updated_entry.publisher,
+                range=updated_entry.range
+            )
+            
+            # Rename files if metadata changed
+            for image in entry.images.all():
+                if image.image and os.path.exists(image.image.path):
+                    old_path = image.image.path
+                    _, ext = os.path.splitext(old_path)
                     
-                    # Delete the old file
+                    # Create new filename with UUID
+                    publisher = to_camel_case(updated_entry.publisher)
+                    range_name = to_camel_case(updated_entry.range)
+                    name = to_camel_case(updated_entry.name)
+                    unique_id = uuid.uuid4().hex[:8]
+                    
+                    new_filename = f"{publisher}_{range_name}_{name}_{unique_id}{ext}"
+                    new_path = os.path.join(os.path.dirname(old_path), new_filename)
+                    
+                    # Rename file
                     try:
-                        os.remove(original_path)
+                        os.rename(old_path, new_path)
+                        image.image.name = f"uploaded_images/{new_filename}"
+                        image.save()
                     except OSError:
-                        pass  # File might already be gone
-                    
-                    # Save with new filename
-                    updated_image.image.save(new_filename, ContentFile(file_content), save=False)
-                    
-                    messages.info(request, f'File renamed to "{new_filename}"')
+                        pass
             
-            # Save the updated image
-            updated_image.save()
-            
-            # Save many-to-many relationships
-            form.save_m2m()
-            
-            messages.success(request, f'Successfully updated "{updated_image.name}"!')
+            messages.success(request, f'Successfully updated "{updated_entry.name}"!')
             return redirect('collection:gallery')
     else:
-        form = ImageEditForm(instance=image)
+        form = EntryEditForm(instance=entry)
     
     return render(request, 'collection/edit.html', {
         'form': form,
-        'image': image
+        'image': entry,  # Keep 'image' for template compatibility
+        'entry': entry
     })
 
 @staff_member_required
 def delete_image(request, image_id):
-    """Delete an existing image - staff only"""
-    image = get_object_or_404(Image, id=image_id)
+    """Delete an existing entry and all its images - staff only"""
+    # Accept both entry_id and image_id for backwards compatibility
+    entry = get_object_or_404(Entry, id=image_id)
     
     if request.method == 'POST':
-        image_name = image.name
+        entry_name = entry.name
         
-        # Delete the physical file if it exists
-        if image.image:
-            try:
-                if os.path.isfile(image.image.path):
-                    os.remove(image.image.path)
-            except (ValueError, OSError) as e:
-                # File doesn't exist or can't be deleted - log but continue
-                messages.warning(request, f'Image file could not be deleted from disk, but database record was removed.')
+        # Delete all associated image files
+        for image in entry.images.all():
+            if image.image:
+                try:
+                    if os.path.isfile(image.image.path):
+                        os.remove(image.image.path)
+                except (ValueError, OSError):
+                    pass
         
-        # Delete the database record
-        image.delete()
+        # Delete the entry (CASCADE will delete associated images)
+        entry.delete()
         
-        messages.success(request, f'Successfully deleted "{image_name}"!')
+        messages.success(request, f'Successfully deleted "{entry_name}" and all its images!')
         return redirect('collection:gallery')
     
     # For GET requests, show confirmation page
     return render(request, 'collection/delete_confirm.html', {
-        'image': image
+        'image': entry,  # Keep 'image' for template compatibility
+        'entry': entry
     })
