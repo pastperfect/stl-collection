@@ -31,38 +31,46 @@
 </div>
 
 <div class="row">
-    {% for image in latest_images %}
+    {% for entry in latest_images %}
     <div class="col-lg-3 col-md-6 mb-4">
         <div class="card h-100">
-            {% if image.image %}
-            <img src="{{ image.image.url }}" class="card-img-top" alt="{{ image.name }}">
-            {% else %}
-            <div class="card-img-top bg-light d-flex align-items-center justify-content-center">
-                <i class="bi bi-file-earmark text-muted" style="font-size: 3rem;"></i>
-            </div>
-            {% endif %}
-            <div class="card-body">
-                <h5 class="card-title">{{ image.name }}</h5>
-                {% if image.publisher %}
-                <p class="card-text"><small class="text-muted">by {{ image.publisher }}</small></p>
+            {% with entry.get_display_image as display_img %}
+                {% if display_img %}
+                <img src="{{ display_img.image.url }}" class="card-img-top" alt="{{ entry.name }}">
+                {% else %}
+                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                    <i class="bi bi-file-earmark text-muted" style="font-size: 3rem;"></i>
+                </div>
                 {% endif %}
-                {% if image.range %}
-                <p class="card-text"><small class="text-muted">Range: {{ image.range }}</small></p>
-                {% endif %}                {% if image.tags.exists %}
+            {% endwith %}
+            <div class="card-body">
+                <h5 class="card-title">{{ entry.name }}</h5>
+                {% if entry.publisher %}
+                <p class="card-text"><small class="text-muted">by {{ entry.publisher }}</small></p>
+                {% endif %}
+                {% if entry.range %}
+                <p class="card-text"><small class="text-muted">Range: {{ entry.range }}</small></p>
+                {% endif %}
+                {% if entry.tags.exists %}
                 <div class="mb-2">
-                    {% for tag in image.tags.all %}
+                    {% for tag in entry.tags.all %}
                     <span class="badge tag-badge" style="background-color: {{ tag.get_color }}; color: {{ tag.get_text_color }};">{{ tag.name }}</span>
                     {% endfor %}
                 </div>
                 {% endif %}
-                <p class="card-text"><small class="text-muted">Uploaded {{ image.upload_date|date:"M d, Y" }}</small></p>
+                <p class="card-text">
+                    <small class="text-muted">
+                        <i class="bi bi-images"></i> {{ entry.images.count }} image{{ entry.images.count|pluralize }} • 
+                        Uploaded {{ entry.upload_date|date:"M d, Y" }}
+                    </small>
+                </p>
             </div>
             <div class="card-footer">
-                <a href="{% url 'image_details:detail' image.id %}" class="btn btn-primary btn-sm">
+                <a href="{% url 'image_details:detail' entry.id %}" class="btn btn-primary btn-sm">
                     <i class="bi bi-eye"></i> View Details
                 </a>
                 {% if user.is_staff %}
-                <a href="{% url 'collection:edit' image.id %}" class="btn btn-outline-secondary btn-sm">
+                <a href="{% url 'collection:edit' entry.id %}" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-pencil"></i> Edit
                 </a>
                 {% endif %}

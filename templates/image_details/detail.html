@@ -75,70 +75,6 @@
     object-fit: cover;
 }
 
-.thumbnail-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0);
-    transition: background 0.3s ease;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    padding: 0.25rem;
-}
-
-.thumbnail-item:hover .thumbnail-overlay {
-    background: rgba(0, 0, 0, 0.3);
-}
-
-.star-icon-thumb {
-    background: rgba(0, 0, 0, 0.7);
-    border: none;
-    color: white;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-    z-index: 10;
-}
-
-.star-icon-thumb:hover {
-    background: rgba(0, 0, 0, 0.9);
-    transform: scale(1.1);
-}
-
-.star-icon-thumb.primary {
-    color: #ffc107;
-}
-
-.delete-icon-thumb {
-    background: rgba(220, 53, 69, 0.9);
-    border: none;
-    color: white;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.85rem;
-    transition: all 0.2s;
-    z-index: 10;
-}
-
-.delete-icon-thumb:hover {
-    background: rgba(220, 53, 69, 1);
-    transform: scale(1.1);
-}
-
 .upload-thumbnail {
     aspect-ratio: 1;
     border: 2px dashed #dee2e6;
@@ -243,22 +179,6 @@
                          data-is-primary="{{ img.is_primary|yesno:'true,false' }}"
                          onclick="switchMainImage({{ img.id }}, '{{ img.image.url }}', {{ img.is_primary|yesno:'true,false' }})">
                         <img src="{{ img.image.url }}" alt="{{ entry.name }}">
-                        <div class="thumbnail-overlay">
-                            {% if user.is_staff %}
-                            <button class="star-icon-thumb {% if img.is_primary %}primary{% endif %}" 
-                                    onclick="togglePrimaryThumb(event, {{ entry.id }}, {{ img.id }})"
-                                    title="{% if img.is_primary %}Primary image{% else %}Set as primary{% endif %}">
-                                <i class="bi bi-star{% if img.is_primary %}-fill{% endif %}"></i>
-                            </button>
-                            {% if images.count > 1 %}
-                            <button class="delete-icon-thumb" 
-                                    onclick="deleteImageThumb(event, {{ entry.id }}, {{ img.id }})"
-                                    title="Delete this image">
-                                <i class="bi bi-x"></i>
-                            </button>
-                            {% endif %}
-                            {% endif %}
-                        </div>
                     </div>
                     {% endfor %}
                     
@@ -392,6 +312,14 @@
                 <img id="modalImage" src="" class="img-fluid" alt="{{ entry.name }}" style="max-height: 100vh; max-width: 100%; object-fit: contain;">
             </div>
             <div class="modal-footer border-0 justify-content-center">
+                {% if user.is_staff %}
+                <button id="modalStarBtn" type="button" class="btn btn-outline-warning" onclick="togglePrimaryModal()">
+                    <i id="modalStarIcon" class="bi bi-star"></i> <span id="modalStarText">Set as Primary</span>
+                </button>
+                <button id="modalDeleteBtn" type="button" class="btn btn-outline-danger" onclick="deleteImageModal()">
+                    <i class="bi bi-trash"></i> Delete Image
+                </button>
+                {% endif %}
                 <a id="modalDownloadLink" href="" target="_blank" class="btn btn-outline-light">
                     <i class="bi bi-download"></i> Download Original
                 </a>
@@ -414,8 +342,15 @@ document.addEventListener('DOMContentLoaded', function() {
         mainImage.addEventListener('click', function() {
             modalImage.src = this.src;
             modalDownloadLink.href = this.src;
+            updateModalButtons(this.dataset.imageId);
         });
     }
+    
+    // Update modal buttons when modal opens
+    imageModal.addEventListener('show.bs.modal', function() {
+        const currentImageId = mainImage.dataset.imageId;
+        updateModalButtons(currentImageId);
+    });
     
     // Handle multiple file upload
     const uploadInput = document.getElementById('uploadMoreInput');
@@ -427,6 +362,41 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Update modal buttons based on current image
+function updateModalButtons(imageId) {
+    const thumbnail = document.querySelector(`.thumbnail-item[data-image-id="${imageId}"]`);
+    if (!thumbnail) return;
+    
+    const isPrimary = thumbnail.dataset.isPrimary === 'true';
+    const modalStarBtn = document.getElementById('modalStarBtn');
+    const modalStarIcon = document.getElementById('modalStarIcon');
+    const modalStarText = document.getElementById('modalStarText');
+    const modalDeleteBtn = document.getElementById('modalDeleteBtn');
+    const imageCount = document.querySelectorAll('.thumbnail-item:not(.upload-thumbnail)').length;
+    
+    if (modalStarBtn && modalStarIcon && modalStarText) {
+        if (isPrimary) {
+            modalStarIcon.className = 'bi bi-star-fill';
+            modalStarText.textContent = 'Primary Image';
+            modalStarBtn.classList.add('active');
+        } else {
+            modalStarIcon.className = 'bi bi-star';
+            modalStarText.textContent = 'Set as Primary';
+            modalStarBtn.classList.remove('active');
+        }
+    }
+    
+    // Disable delete button if only one image remains
+    if (modalDeleteBtn) {
+        modalDeleteBtn.disabled = imageCount <= 1;
+        if (imageCount <= 1) {
+            modalDeleteBtn.title = 'Cannot delete the last image';
+        } else {
+            modalDeleteBtn.title = 'Delete this image';
+        }
+    }
+}
 
 // Switch main image when clicking thumbnail
 function switchMainImage(imageId, imageUrl, isPrimary) {
@@ -456,6 +426,9 @@ function switchMainImage(imageId, imageUrl, isPrimary) {
         item.classList.remove('active');
     });
     document.querySelector(`[data-image-id="${imageId}"]`).classList.add('active');
+    
+    // Update modal buttons if modal is open
+    updateModalButtons(imageId);
 }
 
 // Toggle primary image (thumbnail version)
@@ -476,25 +449,13 @@ function togglePrimaryThumb(event, entryId, imageId) {
             document.querySelectorAll('.thumbnail-item').forEach(item => {
                 item.classList.remove('primary');
                 item.dataset.isPrimary = 'false';
-                const star = item.querySelector('.star-icon-thumb');
-                if (star) {
-                    star.classList.remove('primary');
-                    star.querySelector('i').className = 'bi bi-star';
-                    star.title = 'Set as primary';
-                }
             });
             
-            // Add primary class and filled star to selected thumbnail
+            // Add primary class to selected thumbnail
             const selectedItem = document.querySelector(`.thumbnail-item[data-image-id="${imageId}"]`);
             if (selectedItem) {
                 selectedItem.classList.add('primary');
                 selectedItem.dataset.isPrimary = 'true';
-                const star = selectedItem.querySelector('.star-icon-thumb');
-                if (star) {
-                    star.classList.add('primary');
-                    star.querySelector('i').className = 'bi bi-star-fill';
-                    star.title = 'Primary image';
-                }
                 
                 // Update main image badge if this is the active image
                 if (selectedItem.classList.contains('active')) {
@@ -508,6 +469,60 @@ function togglePrimaryThumb(event, entryId, imageId) {
                     }
                 }
             }
+            
+            // Update modal buttons if modal is open
+            updateModalButtons(imageId);
+        } else {
+            alert('Failed to set primary image');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error setting primary image');
+    });
+}
+
+// Toggle primary image from modal
+function togglePrimaryModal() {
+    const mainImage = document.getElementById('mainImage');
+    const imageId = mainImage.dataset.imageId;
+    const entryId = {{ entry.id }};
+    
+    fetch(`/upload/entry/${entryId}/image/${imageId}/set-primary/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove primary class from all thumbnails
+            document.querySelectorAll('.thumbnail-item').forEach(item => {
+                item.classList.remove('primary');
+                item.dataset.isPrimary = 'false';
+            });
+            
+            // Add primary class to selected thumbnail
+            const selectedItem = document.querySelector(`.thumbnail-item[data-image-id="${imageId}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('primary');
+                selectedItem.dataset.isPrimary = 'true';
+                
+                // Update main image badge
+                const mainContainer = document.getElementById('mainImageContainer');
+                let primaryBadge = mainContainer.querySelector('.primary-badge');
+                if (!primaryBadge) {
+                    primaryBadge = document.createElement('div');
+                    primaryBadge.className = 'primary-badge';
+                    primaryBadge.innerHTML = '<i class="bi bi-star-fill"></i> Primary';
+                    mainContainer.appendChild(primaryBadge);
+                }
+            }
+            
+            // Update modal buttons
+            updateModalButtons(imageId);
         } else {
             alert('Failed to set primary image');
         }
@@ -550,12 +565,6 @@ function deleteImageThumb(event, entryId, imageId) {
                 if (newPrimary) {
                     newPrimary.classList.add('primary');
                     newPrimary.dataset.isPrimary = 'true';
-                    const star = newPrimary.querySelector('.star-icon-thumb');
-                    if (star) {
-                        star.classList.add('primary');
-                        star.querySelector('i').className = 'bi bi-star-fill';
-                        star.title = 'Primary image';
-                    }
                 }
             }
             
@@ -567,6 +576,84 @@ function deleteImageThumb(event, entryId, imageId) {
                     const newImageUrl = firstThumb.dataset.imageUrl;
                     const newIsPrimary = firstThumb.dataset.isPrimary === 'true';
                     switchMainImage(newImageId, newImageUrl, newIsPrimary);
+                }
+            }
+            
+            // Update image count
+            const remainingImages = document.querySelectorAll('.thumbnail-item:not(.upload-thumbnail)').length;
+            const badge = document.querySelector('.badge.bg-secondary');
+            if (badge) {
+                badge.textContent = `${remainingImages} image${remainingImages !== 1 ? 's' : ''}`;
+            }
+        } else {
+            alert(data.error || 'Failed to delete image');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting image');
+    });
+}
+
+// Delete image from modal
+function deleteImageModal() {
+    const mainImage = document.getElementById('mainImage');
+    const imageId = mainImage.dataset.imageId;
+    const entryId = {{ entry.id }};
+    
+    const imageCount = document.querySelectorAll('.thumbnail-item:not(.upload-thumbnail)').length;
+    if (imageCount <= 1) {
+        alert('Cannot delete the last image of this entry.');
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to delete this image?')) {
+        return;
+    }
+    
+    fetch(`/upload/entry/${entryId}/image/${imageId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const thumbnailItem = document.querySelector(`.thumbnail-item[data-image-id="${imageId}"]`);
+            
+            // Remove the thumbnail from DOM
+            if (thumbnailItem) {
+                thumbnailItem.remove();
+            }
+            
+            // If there's a new primary, update it
+            if (data.new_primary_id) {
+                const newPrimary = document.querySelector(`.thumbnail-item[data-image-id="${data.new_primary_id}"]`);
+                if (newPrimary) {
+                    newPrimary.classList.add('primary');
+                    newPrimary.dataset.isPrimary = 'true';
+                }
+            }
+            
+            // Switch to first remaining image
+            const firstThumb = document.querySelector('.thumbnail-item:not(.upload-thumbnail)');
+            if (firstThumb) {
+                const newImageId = firstThumb.dataset.imageId;
+                const newImageUrl = firstThumb.dataset.imageUrl;
+                const newIsPrimary = firstThumb.dataset.isPrimary === 'true';
+                switchMainImage(newImageId, newImageUrl, newIsPrimary);
+                
+                // Update modal image
+                document.getElementById('modalImage').src = newImageUrl;
+                document.getElementById('modalDownloadLink').href = newImageUrl;
+                updateModalButtons(newImageId);
+            } else {
+                // No more images, close modal and potentially reload
+                const modal = bootstrap.Modal.getInstance(document.getElementById('imageModal'));
+                if (modal) {
+                    modal.hide();
                 }
             }
             

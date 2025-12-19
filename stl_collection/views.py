@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from image_upload.models import Image
+from image_upload.models import Entry, Image
 from tags.models import Tag
 
 def public_landing(request):
@@ -9,24 +9,24 @@ def public_landing(request):
         return redirect('home')
     
     # Show basic stats for public view
-    total_images = Image.objects.count()
+    total_entries = Entry.objects.count()
     total_tags = Tag.objects.count()
     
     return render(request, 'public_landing.html', {
-        'total_images': total_images,
+        'total_images': total_entries,
         'total_tags': total_tags,
     })
 
 @login_required
 def landing_page(request):
-    """Authenticated home page showing the latest 4 uploaded images"""
-    latest_images = Image.objects.order_by('-upload_date')[:4]
+    """Authenticated home page showing the latest 4 uploaded entries"""
+    latest_images = Entry.objects.order_by('-upload_date')[:4]
     
     # Statistics
-    total_images = Image.objects.count()
+    total_images = Entry.objects.count()
     total_tags = Tag.objects.count()
-    total_publishers = Image.objects.exclude(publisher__isnull=True).exclude(publisher__exact='').values('publisher').distinct().count()
-    total_ranges = Image.objects.exclude(range__isnull=True).exclude(range__exact='').values('range').distinct().count()
+    total_publishers = Entry.objects.exclude(publisher__isnull=True).exclude(publisher__exact='').values('publisher').distinct().count()
+    total_ranges = Entry.objects.exclude(range__isnull=True).exclude(range__exact='').values('range').distinct().count()
     
     return render(request, 'landing_page.html', {
         'latest_images': latest_images,

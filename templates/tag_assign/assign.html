@@ -72,8 +72,8 @@
 <div class="stats-row">
     <div class="row text-center">
         <div class="col-md-3">
-            <h5 class="mb-1">{{ total_images }}</h5>
-            <small class="text-muted">Total Images</small>
+            <h5 class="mb-1">{{ total_entries }}</h5>
+            <small class="text-muted">Total Entries</small>
         </div>
         <div class="col-md-3">
             <h5 class="mb-1 text-success">{{ tagged_count }}</h5>
@@ -150,12 +150,12 @@
             <h5 class="card-title mb-0">
                 <i class="bi bi-gear"></i> Bulk Tag Assignment
             </h5>
-            <small class="text-muted">Select multiple images and assign tags in bulk</small>
+            <small class="text-muted">Select multiple entries and assign tags in bulk</small>
         </div>
         <div class="card-body">
             <div class="row align-items-center">
                 <div class="col-md-6">
-                    <span class="selection-counter" id="selectionCounter">0 images selected</span>
+                    <span class="selection-counter" id="selectionCounter">0 entries selected</span>
                     <div class="btn-group ms-3" role="group">
                         <button type="button" class="btn btn-outline-primary btn-sm" id="selectAllBtn">
                             <i class="bi bi-check-all"></i> Select All
@@ -201,7 +201,7 @@
                     <h5 class="card-title mb-0">
                         <i class="bi bi-lightning"></i> Quick Tags
                     </h5>
-                    <small class="text-muted">Click tags to quickly assign to selected images</small>
+                    <small class="text-muted">Click tags to quickly assign to selected entries</small>
                 </div>
                 <div class="col-md-6">
                     <select class="form-select form-select-sm" id="tagTypeFilter" onchange="filterQuickTags()">
@@ -238,7 +238,7 @@
 {% if page_obj.object_list %}
 <div class="row mb-3">
     <div class="col-12">        <p class="text-muted">
-            Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} images
+            Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} entries
             {% if search_query or publisher_filter or range_filter or tag_filter or missing_tag_type_filter or untagged_only %}
             (filtered)
             {% endif %}
@@ -246,36 +246,49 @@
     </div>
 </div>
 
-<!-- Images Grid -->
-<div class="row" id="imagesGrid">
-    {% for image in page_obj %}
+<!-- Entries Grid -->
+<div class="row" id="entriesGrid">
+    {% for entry in page_obj %}
     <div class="col-md-3 col-lg-2 mb-4">
-        <div class="card image-card" data-image-id="{{ image.id }}">
+        <div class="card image-card" data-entry-id="{{ entry.id }}">
             <div class="selection-overlay">
                 <i class="bi bi-check"></i>
             </div>
             <div class="card-img-container">
-                <img src="{{ image.image.url }}" class="card-img-top" alt="{{ image.name }}">
+                {% with entry.get_display_image as display_img %}
+                    {% if display_img %}
+                    <img src="{{ display_img.image.url }}" class="card-img-top" alt="{{ entry.name }}">
+                    {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                        <i class="bi bi-file-earmark text-muted" style="font-size: 2rem;"></i>
+                    </div>
+                    {% endif %}
+                {% endwith %}
             </div>
             <div class="card-body p-2">
-                <h6 class="card-title mb-1" style="font-size: 0.8rem;">{{ image.name|truncatechars:20 }}</h6>
-                <div class="mb-2">                    {% for tag in image.tags.all %}
+                <h6 class="card-title mb-1" style="font-size: 0.8rem;">{{ entry.name|truncatechars:20 }}</h6>
+                {% if entry.images.count > 1 %}
+                <small class="text-muted d-block mb-1">
+                    <i class="bi bi-images"></i> {{ entry.images.count }} images
+                </small>
+                {% endif %}
+                <div class="mb-2">                    {% for tag in entry.tags.all %}
                     <span class="badge tag-badge quick-tag assigned" 
                           style="background-color: {{ tag.get_color }} !important; color: {{ tag.get_text_color }} !important;"
                           data-tag-id="{{ tag.id }}" 
                           data-tag-name="{{ tag.name }}"
-                          data-image-id="{{ image.id }}">
+                          data-entry-id="{{ entry.id }}">
                         {{ tag.name }}
                     </span>
                     {% empty %}
                     <small class="text-muted">No tags</small>
                     {% endfor %}
                 </div>
-                {% if image.publisher or image.range %}
+                {% if entry.publisher or entry.range %}
                 <small class="text-muted d-block">
-                    {% if image.publisher %}{{ image.publisher }}{% endif %}
-                    {% if image.publisher and image.range %} - {% endif %}
-                    {% if image.range %}{{ image.range }}{% endif %}
+                    {% if entry.publisher %}{{ entry.publisher }}{% endif %}
+                    {% if entry.publisher and entry.range %} - {% endif %}
+                    {% if entry.range %}{{ entry.range }}{% endif %}
                 </small>
                 {% endif %}
             </div>
@@ -333,16 +346,16 @@
 <!-- No Results -->
 <div class="col-12">
     <div class="alert alert-info text-center">
-        <h4><i class="bi bi-info-circle"></i> No images found</h4>
+        <h4><i class="bi bi-info-circle"></i> No entries found</h4>
         {% if search_query or publisher_filter or range_filter or tag_filter or untagged_only %}
-        <p>No images match your current filters.</p>
+        <p>No entries match your current filters.</p>
         <a href="{% url 'tag_assign:assign' %}" class="btn btn-outline-primary">
-            <i class="bi bi-arrow-left"></i> View All Images
+            <i class="bi bi-arrow-left"></i> View All Entries
         </a>
         {% else %}
-        <p>No images have been uploaded yet.</p>
+        <p>No entries have been uploaded yet.</p>
         <a href="{% url 'image_upload:upload' %}" class="btn btn-primary">
-            <i class="bi bi-upload"></i> Upload Images
+            <i class="bi bi-upload"></i> Upload Files
         </a>
         {% endif %}
     </div>
@@ -365,22 +378,22 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    let selectedImages = new Set();
+    let selectedEntries = new Set();
     const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
     
-    // Image selection
+    // Entry selection
     document.querySelectorAll('.image-card').forEach(card => {
         card.addEventListener('click', function(e) {
             // Don't trigger if clicking on a tag
             if (e.target.classList.contains('quick-tag')) return;
             
-            const imageId = this.dataset.imageId;
+            const entryId = this.dataset.entryId;
             
-            if (selectedImages.has(imageId)) {
-                selectedImages.delete(imageId);
+            if (selectedEntries.has(entryId)) {
+                selectedEntries.delete(entryId);
                 this.classList.remove('selected');
             } else {
-                selectedImages.add(imageId);
+                selectedEntries.add(entryId);
                 this.classList.add('selected');
             }
             
@@ -391,8 +404,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Select All button
     document.getElementById('selectAllBtn').addEventListener('click', function() {
         document.querySelectorAll('.image-card').forEach(card => {
-            const imageId = card.dataset.imageId;
-            selectedImages.add(imageId);
+            const entryId = card.dataset.entryId;
+            selectedEntries.add(entryId);
             card.classList.add('selected');
         });
         updateSelectionCounter();
@@ -400,7 +413,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Clear Selection button
     document.getElementById('clearSelectionBtn').addEventListener('click', function() {
-        selectedImages.clear();
+        selectedEntries.clear();
         document.querySelectorAll('.image-card').forEach(card => {
             card.classList.remove('selected');
         });
@@ -409,8 +422,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update selection counter
     function updateSelectionCounter() {
-        const count = selectedImages.size;
-        document.getElementById('selectionCounter').textContent = `${count} image${count !== 1 ? 's' : ''} selected`;
+        const count = selectedEntries.size;
+        document.getElementById('selectionCounter').textContent = `${count} entr${count !== 1 ? 'ies' : 'y'} selected`;
     }
     
     // Bulk tag assignment
@@ -428,8 +441,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const tagId = this.dataset.tagId;
             const tagName = this.dataset.tagName;
             
-            if (selectedImages.size === 0) {
-                alert('Please select at least one image first.');
+            if (selectedEntries.size === 0) {
+                alert('Please select at least one entry first.');
                 return;
             }
             
@@ -442,9 +455,9 @@ document.addEventListener('DOMContentLoaded', function() {
         tag.addEventListener('click', function(e) {
             e.stopPropagation();
             const tagId = this.dataset.tagId;
-            const imageId = this.dataset.imageId;
+            const entryId = this.dataset.entryId;
             
-            removeTagFromImage(imageId, tagId, this);
+            removeTagFromEntry(entryId, tagId, this);
         });
     });
     
@@ -457,8 +470,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        if (selectedImages.size === 0) {
-            alert('Please select at least one image first.');
+        if (selectedEntries.size === 0) {
+            alert('Please select at least one entry first.');
             return;
         }
         
@@ -471,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'X-CSRFToken': '{{ csrf_token }}'
             },
             body: JSON.stringify({
-                image_ids: Array.from(selectedImages),
+                entry_ids: Array.from(selectedEntries),
                 tag_ids: [tagId],
                 action: action
             })
@@ -504,7 +517,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'X-CSRFToken': '{{ csrf_token }}'
             },
             body: JSON.stringify({
-                image_ids: Array.from(selectedImages),
+                entry_ids: Array.from(selectedEntries),
                 tag_ids: [tagId],
                 action: 'add'
             })
@@ -513,7 +526,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             loadingModal.hide();
             if (data.success) {
-                showToast(`Added "${tagName}" to ${selectedImages.size} image(s)`, 'success');
+                showToast(`Added "${tagName}" to ${selectedEntries.size} entr${selectedEntries.size !== 1 ? 'ies' : 'y'}`, 'success');
                 setTimeout(() => location.reload(), 1000);
             } else {
                 showToast('Error: ' + data.error, 'danger');
@@ -525,7 +538,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    function removeTagFromImage(imageId, tagId, element) {
+    function removeTagFromEntry(entryId, tagId, element) {
         fetch('{% url "tag_assign:quick_assign" %}', {
             method: 'POST',
             headers: {
@@ -533,7 +546,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'X-CSRFToken': '{{ csrf_token }}'
             },
             body: JSON.stringify({
-                image_id: imageId,
+                entry_id: entryId,
                 tag_id: tagId,
                 action: 'remove'
             })
