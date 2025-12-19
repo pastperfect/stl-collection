@@ -94,6 +94,13 @@
     transform: translateY(-2px);
 }
 
+.upload-thumbnail.dragover {
+    border-color: #0d6efd;
+    background: #cfe2ff;
+    border-width: 3px;
+    transform: scale(1.05);
+}
+
 .upload-thumbnail i {
     font-size: 1.5rem;
     color: #0d6efd;
@@ -183,9 +190,9 @@
                     {% endfor %}
                     
                     {% if user.is_staff %}
-                    <div class="upload-thumbnail" onclick="document.getElementById('uploadMoreInput').click()">
+                    <div class="upload-thumbnail" id="uploadDropZone">
                         <i class="bi bi-plus-circle"></i>
-                        <span>Add Images</span>
+                        <span>Drag & Drop<br>or Click</span>
                     </div>
                     <input type="file" id="uploadMoreInput" multiple accept="image/*" style="display: none;">
                     {% endif %}
@@ -360,12 +367,56 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle multiple file upload
     const uploadInput = document.getElementById('uploadMoreInput');
+    const uploadDropZone = document.getElementById('uploadDropZone');
+    
     if (uploadInput) {
         uploadInput.addEventListener('change', function() {
             if (this.files && this.files.length > 0) {
                 uploadMoreImages({{ entry.id }}, this.files);
             }
         });
+    }
+    
+    // Drag and drop functionality for upload thumbnail
+    if (uploadDropZone) {
+        // Click to browse
+        uploadDropZone.addEventListener('click', function() {
+            uploadInput.click();
+        });
+        
+        // Prevent defaults
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadDropZone.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        // Highlight on drag
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadDropZone.addEventListener(eventName, function() {
+                uploadDropZone.classList.add('dragover');
+            }, false);
+        });
+        
+        // Unhighlight on drag leave/drop
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadDropZone.addEventListener(eventName, function() {
+                uploadDropZone.classList.remove('dragover');
+            }, false);
+        });
+        
+        // Handle drop
+        uploadDropZone.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                uploadMoreImages({{ entry.id }}, files);
+            }
+        }, false);
+    }
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
     }
 });
 
