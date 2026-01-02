@@ -119,24 +119,8 @@ def edit_image(request, image_id):
             # Save the entry
             updated_entry = form.save()
             
-            # Handle tag type selections
-            tag_types = TagType.objects.filter(is_active=True).order_by('sort_order', 'name')
-            selected_tags = []
-            
-            for tag_type in tag_types:
-                tag_param = request.POST.get(f'tag_type_{tag_type.id}', '')
-                if tag_param:
-                    try:
-                        tag_id = int(tag_param)
-                        selected_tags.append(tag_id)
-                    except (ValueError, TypeError):
-                        pass
-            
-            # Update the entry's tags
-            if selected_tags:
-                updated_entry.tags.set(selected_tags)
-            else:
-                updated_entry.tags.clear()
+            # Note: Tags are now managed via AJAX in the quick tags section
+            # No need to handle tag_type_{id} POST parameters
             
             # Update denormalized fields in all associated images
             entry.images.update(
@@ -173,14 +157,43 @@ def edit_image(request, image_id):
     else:
         form = EntryEditForm(instance=entry)
     
-    # Get tag types and all tags for dropdowns
+    # Get tag types and all tags for quick tags section
     tag_types = TagType.objects.filter(is_active=True, show_in_gallery=True).order_by('sort_order', 'name')
     all_tags = Tag.objects.select_related('tag_type', 'reference_tag').all()
     
-    # Get current tags for the entry
-    current_tags = {}
-    for tag in entry.tags.all():
-        current_tags[tag.tag_type.id] = tag.id
+    # Handle quick tags filtering
+    tag_type_filter = request.GET.get('tag_type', '')
+    reference_tag_filter = request.GET.get('reference_tag', '')
+    
+    quick_tags = all_tags
+    selected_tag_type_obj = None
+    
+    # Filter by tag type
+    if tag_type_filter:
+        try:
+            tag_type_id = int(tag_type_filter)
+            quick_tags = quick_tags.filter(tag_type_id=tag_type_id)
+            selected_tag_type_obj = TagType.objects.get(id=tag_type_id)
+        except (ValueError, TagType.DoesNotExist):
+            pass
+    
+    # Filter by reference tag
+    if selected_tag_type_obj and selected_tag_type_obj.reference_tagtype:
+        if reference_tag_filter == 'none':
+            quick_tags = quick_tags.filter(reference_tag__isnull=True)
+        elif reference_tag_filter:
+            try:
+                reference_tag_id = int(reference_tag_filter)
+                quick_tags = quick_tags.filter(reference_tag_id=reference_tag_id)
+            except ValueError:
+                pass
+    
+    # Get reference tags for the filter
+    reference_tags = []
+    if selected_tag_type_obj and selected_tag_type_obj.reference_tagtype:
+        reference_tags = Tag.objects.filter(
+            tag_type=selected_tag_type_obj.reference_tagtype
+        ).order_by('name')
     
     return render(request, 'collection/edit.html', {
         'form': form,
@@ -188,7 +201,11 @@ def edit_image(request, image_id):
         'entry': entry,
         'tag_types': tag_types,
         'all_tags': all_tags,
-        'current_tags': current_tags
+        'quick_tags': quick_tags,
+        'tag_type_filter': tag_type_filter,
+        'reference_tag_filter': reference_tag_filter,
+        'selected_tag_type_obj': selected_tag_type_obj,
+        'reference_tags': reference_tags
     })
 
 @staff_member_required

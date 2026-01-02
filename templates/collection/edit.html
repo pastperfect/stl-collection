@@ -65,30 +65,80 @@
                         {% endif %}
                     </div>
 
+                    <!-- Quick Tags Section -->
                     <div class="mb-3">
-                        <label class="form-label">Tags</label>
-                        <div class="row g-2">
-                            {% for tag_type in tag_types %}
-                            <div class="col-md-4">
-                                <label for="tag_type_{{ tag_type.id }}" class="form-label small" style="color: {{ tag_type.color }};">{{ tag_type.name }}</label>
-                                <select class="form-select form-select-sm tag-type-select"
-                                        id="tag_type_{{ tag_type.id }}"
-                                        name="tag_type_{{ tag_type.id }}"
-                                        data-tag-type-id="{{ tag_type.id }}"
-                                        data-reference-type-id="{% if tag_type.reference_tagtype %}{{ tag_type.reference_tagtype.id }}{% endif %}">
-                                    <option value="">None</option>
-                                    {% for tag in all_tags %}
-                                        {% if tag.tag_type.id == tag_type.id %}
-                                        <option value="{{ tag.id }}"
-                                                data-reference-tag-id="{% if tag.reference_tag %}{{ tag.reference_tag.id }}{% endif %}"
-                                                {% if current_tags and tag_type.id in current_tags and current_tags|dict_item:tag_type.id == tag.id %}selected{% endif %}>
-                                            {{ tag.name }}
-                                        </option>
-                                        {% endif %}
-                                    {% endfor %}
-                                </select>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-tags"></i> Tags
+                                        </h6>
+                                        <small class="text-muted">Click tags to add or remove</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="tagTypeFilter" class="form-label mb-1 small">Filter by Type</label>
+                                        <select class="form-select form-select-sm" id="tagTypeFilter" onchange="filterQuickTags()">
+                                            <option value="">All Tag Types</option>
+                                            {% for tag_type in tag_types %}
+                                            <option value="{{ tag_type.id }}" 
+                                                    data-has-reference="{% if tag_type.reference_tagtype %}true{% else %}false{% endif %}"
+                                                    {% if tag_type.id|stringformat:"s" == tag_type_filter %}selected{% endif %}>
+                                                {{ tag_type.name }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3" id="referenceTagFilterContainer" style="{% if not selected_tag_type_obj or not selected_tag_type_obj.reference_tagtype %}display: none;{% endif %}">
+                                        <label for="referenceTagFilter" class="form-label mb-1 small">Filter by Reference</label>
+                                        <select class="form-select form-select-sm" id="referenceTagFilter" onchange="filterQuickTags()">
+                                            <option value="">All References</option>
+                                            <option value="none" {% if reference_tag_filter == 'none' %}selected{% endif %}>No Reference</option>
+                                            {% for ref_tag in reference_tags %}
+                                            <option value="{{ ref_tag.id }}" {% if reference_tag_filter == ref_tag.id|stringformat:"s" %}selected{% endif %}>
+                                                {{ ref_tag.name }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
-                            {% endfor %}
+                            <div class="card-body">
+                                <!-- Current Tags -->
+                                <div class="mb-2">
+                                    <strong class="small">Assigned Tags:</strong>
+                                    <div class="mt-2" id="currentTagsContainer">
+                                        {% for tag in entry.tags.all %}
+                                        <span class="badge quick-tag assigned" 
+                                            style="background-color: {{ tag.get_color }} !important; color: {{ tag.get_text_color }} !important; cursor: pointer;"
+                                            data-tag-id="{{ tag.id }}" 
+                                            data-tag-name="{{ tag.name }}">
+                                            {{ tag.name }} <i class="bi bi-x"></i>
+                                        </span>
+                                        {% empty %}
+                                        <small class="text-muted">No tags assigned</small>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <hr>
+                                <!-- Available Tags -->
+                                <div class="mt-2" id="quickTagsContainer">
+                                    {% for tag in quick_tags|slice:":50" %}
+                                    <span class="badge quick-tag" 
+                                        style="background-color: {{ tag.get_color }}; color: {{ tag.get_text_color }}; cursor: pointer;"
+                                        data-tag-id="{{ tag.id }}" 
+                                        data-tag-name="{{ tag.name }}" 
+                                        data-tag-type="{{ tag.tag_type.id }}">
+                                        {{ tag.name }}
+                                    </span>
+                                    {% endfor %}
+                                    {% if quick_tags|length > 50 %}
+                                    <div class="mt-2">
+                                        <small class="text-muted">Showing first 50 tags. Use the filter above to narrow down results.</small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -126,76 +176,158 @@
     </div>
 </div>
 
+<style>
+.quick-tag {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin: 0.2rem;
+}
+.quick-tag:hover {
+    transform: scale(1.05);
+    opacity: 0.8;
+}
+.quick-tag.assigned:hover {
+    opacity: 0.7;
+}
+</style>
+
 <script>
-/**
- * Handle tag type selection change
- * If a tag type has a reference, filter other dropdowns that depend on it
- */
-function handleTagTypeChange(changedSelect) {
-    const selectedOption = changedSelect.options[changedSelect.selectedIndex];
-    const referenceTagId = selectedOption.getAttribute('data-reference-tag-id');
-    const tagTypeId = changedSelect.getAttribute('data-tag-type-id');
+function filterQuickTags() {
+    const tagTypeFilter = document.getElementById('tagTypeFilter');
+    const referenceTagFilter = document.getElementById('referenceTagFilter');
+    const referenceTagFilterContainer = document.getElementById('referenceTagFilterContainer');
+    const selectedType = tagTypeFilter.value;
+    const selectedOption = tagTypeFilter.options[tagTypeFilter.selectedIndex];
+    const hasReference = selectedOption.getAttribute('data-has-reference') === 'true';
     
-    // Find all dropdowns that reference this tag type
-    document.querySelectorAll('.tag-type-select').forEach(select => {
-        const dependsOnTypeId = select.getAttribute('data-reference-type-id');
-        if (dependsOnTypeId === tagTypeId) {
-            filterDependentSelect(select, referenceTagId);
-        }
-    });
-}
-
-/**
- * Filter options in a dependent select based on reference tag
- */
-function filterDependentSelect(select, referenceTagId) {
-    const options = select.querySelectorAll('option');
-    let hasVisibleOptions = false;
+    const currentUrl = new URL(window.location);
     
-    options.forEach(option => {
-        if (option.value === '') {
-            // Always show "None" option
-            option.style.display = '';
-            return;
-        }
+    if (selectedType) {
+        currentUrl.searchParams.set('tag_type', selectedType);
         
-        const optionRefTagId = option.getAttribute('data-reference-tag-id');
-        
-        if (!referenceTagId || referenceTagId === '') {
-            // No reference selected, show all options
-            option.style.display = '';
-            hasVisibleOptions = true;
-        } else if (optionRefTagId === referenceTagId) {
-            // Reference matches, show option
-            option.style.display = '';
-            hasVisibleOptions = true;
-        } else {
-            // Reference doesn't match, hide option
-            option.style.display = 'none';
-            // If this option was selected, deselect it
-            if (option.selected) {
-                select.value = '';
+        if (hasReference && referenceTagFilter) {
+            const selectedReference = referenceTagFilter.value;
+            if (selectedReference) {
+                currentUrl.searchParams.set('reference_tag', selectedReference);
+            } else {
+                currentUrl.searchParams.delete('reference_tag');
             }
+        } else {
+            currentUrl.searchParams.delete('reference_tag');
         }
-    });
+    } else {
+        currentUrl.searchParams.delete('tag_type');
+        currentUrl.searchParams.delete('reference_tag');
+    }
+    
+    window.location.href = currentUrl.toString();
 }
 
-// Initialize filters on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Attach change handlers to all tag type selects
-    document.querySelectorAll('.tag-type-select').forEach(select => {
-        select.addEventListener('change', function() {
-            handleTagTypeChange(this);
+    // Handle quick tag clicks (add tags)
+    document.querySelectorAll('.quick-tag:not(.assigned)').forEach(tag => {
+        tag.addEventListener('click', function() {
+            const tagId = this.dataset.tagId;
+            const tagName = this.dataset.tagName;
+            addTag(tagId, tagName);
         });
     });
     
-    // Apply initial filtering based on current selections
-    document.querySelectorAll('.tag-type-select').forEach(select => {
-        const selectedOption = select.options[select.selectedIndex];
-        if (selectedOption && selectedOption.value) {
-            handleTagTypeChange(select);
-        }
+    // Handle assigned tag clicks (remove tags)
+    document.querySelectorAll('.quick-tag.assigned').forEach(tag => {
+        tag.addEventListener('click', function() {
+            const tagId = this.dataset.tagId;
+            removeTag(tagId, this);
+        });
     });
+    
+    function addTag(tagId, tagName) {
+        const entryId = {{ entry.id }};
+        
+        fetch('{% url "tag_assign:quick_assign" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                entry_id: entryId,
+                tag_id: tagId,
+                action: 'add'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(`Added "${tagName}"`, 'success');
+                setTimeout(() => location.reload(), 500);
+            } else {
+                showToast('Error: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            showToast('Network error occurred', 'danger');
+        });
+    }
+    
+    function removeTag(tagId, element) {
+        const entryId = {{ entry.id }};
+        
+        fetch('{% url "tag_assign:quick_assign" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                entry_id: entryId,
+                tag_id: tagId,
+                action: 'remove'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Tag removed', 'success');
+                setTimeout(() => location.reload(), 500);
+            } else {
+                showToast('Error: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            showToast('Network error occurred', 'danger');
+        });
+    }
+    
+    function showToast(message, type) {
+        const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-bg-${type} border-0`;
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        
+        toast.addEventListener('hidden.bs.toast', () => {
+            toast.remove();
+        });
+    }
+    
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '1056';
+        document.body.appendChild(container);
+        return container;
+    }
 });
 </script>
 
