@@ -62,6 +62,29 @@
     display: inline-block;
     vertical-align: middle;
 }
+
+/* Drag and drop styles */
+.sortable-ghost {
+    opacity: 0.4;
+    background: #f8f9fa !important;
+}
+
+.sortable-drag {
+    opacity: 0.8;
+}
+
+.drag-handle {
+    cursor: grab;
+    color: #6c757d;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+tbody.sortable tr {
+    cursor: move;
+}
 </style>
 {% endblock %}
 
@@ -293,6 +316,7 @@
                                     <table class="table table-stable">                        
                                         <thead>
                                             <tr>
+                                                <th style="width: 40px;"></th>
                                                 <th>Name</th>
                                                 <th>Color</th>
                                                 <th>Reference Tag Type</th>
@@ -301,9 +325,12 @@
                                                 <th>Actions</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                        <tbody class="sortable">
                                             {% for tagtype in tagtypes %}                            
-                                            <tr>
+                                            <tr data-id="{{ tagtype.id }}">
+                                                <td class="text-center">
+                                                    <i class="bi bi-grip-vertical drag-handle"></i>
+                                                </td>
                                                 <td>
                                                     <span>{{ tagtype.name }}</span>
                                                 </td>                                
@@ -357,4 +384,58 @@
         </div>
     </div>
 </div>
+
+<!-- SortableJS for drag and drop -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sortableTable = document.querySelector('tbody.sortable');
+    
+    if (sortableTable) {
+        new Sortable(sortableTable, {
+            animation: 150,
+            handle: '.drag-handle',
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            onEnd: function(evt) {
+                // Get the new order
+                const rows = sortableTable.querySelectorAll('tr');
+                const order = [];
+                rows.forEach((row, index) => {
+                    order.push({
+                        id: row.getAttribute('data-id'),
+                        sort_order: index
+                    });
+                });
+                
+                // Send AJAX request to update the order
+                fetch('{% url "tags:update_tagtype_order" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ order: order })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update the sort_order display values
+                        rows.forEach((row, index) => {
+                            const sortOrderCell = row.cells[4]; // 5th column (0-indexed, including drag handle)
+                            sortOrderCell.textContent = index;
+                        });
+                    } else {
+                        alert('Failed to update order: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to update order');
+                });
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

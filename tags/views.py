@@ -2,8 +2,10 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from .models import Tag, TagType
 from .forms import TagForm, TagTypeForm
+import json
 
 @staff_member_required
 def tag_list(request):
@@ -210,3 +212,23 @@ def get_reference_tags(request, tagtype_id):
         'reference_tagtype_name': tagtype.reference_tagtype.name,
         'tags': list(reference_tags)
     })
+
+@staff_member_required
+@require_POST
+def update_tagtype_order(request):
+    """API endpoint to update tag type sort order via drag and drop"""
+    try:
+        data = json.loads(request.body)
+        order = data.get('order', [])
+        
+        # Update each tag type's sort_order
+        for item in order:
+            tagtype_id = item.get('id')
+            sort_order = item.get('sort_order')
+            
+            if tagtype_id and sort_order is not None:
+                TagType.objects.filter(id=tagtype_id).update(sort_order=sort_order)
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

@@ -15,4 +15,5 @@ urlpatterns = [
     path('tagtype/delete/<int:tagtype_id>/', views.delete_tagtype, name='delete_tagtype'),
     # API endpoints
     path('api/reference-tags/<int:tagtype_id>/', views.get_reference_tags, name='api_reference_tags'),
+    path('api/tagtype/update-order/', views.update_tagtype_order, name='update_tagtype_order'),
 ]
