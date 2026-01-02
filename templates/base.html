@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="auto">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -37,9 +37,6 @@
             padding: 1rem;
             margin-bottom: 2rem;
         }
-        [data-bs-theme="dark"] .filter-form {
-            background-color: var(--bs-dark);
-        }
         .tag-badge {
             font-size: 0.75rem;
             padding: 0.25rem 0.5rem;
@@ -70,27 +67,6 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Theme Toggle -->
-    <script>
-        const getStoredTheme = () => localStorage.getItem('theme')
-        const setStoredTheme = theme => localStorage.setItem('theme', theme)
-        const getPreferredTheme = () => {
-            const storedTheme = getStoredTheme()
-            if (storedTheme) {
-                return storedTheme
-            }
-            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-        }
-        const setTheme = theme => {
-            if (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                document.documentElement.setAttribute('data-bs-theme', 'dark')
-            } else {
-                document.documentElement.setAttribute('data-bs-theme', theme)
-            }
-        }
-        setTheme(getPreferredTheme())
-    </script>
-
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
@@ -151,18 +127,6 @@
                 {% endif %}
                 
                 <ul class="navbar-nav">
-                    <!-- Theme Toggle -->
-                    <li class="nav-item dropdown">
-                        <button class="btn btn-link nav-link py-2 px-0 px-lg-2 dropdown-toggle" id="bd-theme" type="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-circle-half"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><button class="dropdown-item" data-bs-theme-value="light"><i class="bi bi-sun-fill"></i> Light</button></li>
-                            <li><button class="dropdown-item" data-bs-theme-value="dark"><i class="bi bi-moon-stars-fill"></i> Dark</button></li>
-                            <li><button class="dropdown-item" data-bs-theme-value="auto"><i class="bi bi-circle-half"></i> Auto</button></li>
-                        </ul>
-                    </li>
-                    
                     {% if user.is_authenticated %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
@@ -234,81 +198,6 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
-    <!-- Theme Toggle Script -->
-    <script>
-        (() => {
-            'use strict'
-
-            const getStoredTheme = () => localStorage.getItem('theme')
-            const setStoredTheme = theme => localStorage.setItem('theme', theme)
-
-            const getPreferredTheme = () => {
-                const storedTheme = getStoredTheme()
-                if (storedTheme) {
-                    return storedTheme
-                }
-
-                return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-            }
-
-            const setTheme = theme => {
-                if (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    document.documentElement.setAttribute('data-bs-theme', 'dark')
-                } else {
-                    document.documentElement.setAttribute('data-bs-theme', theme)
-                }
-            }
-
-            setTheme(getPreferredTheme())
-
-            const showActiveTheme = (theme, focus = false) => {
-                const themeSwitcher = document.querySelector('#bd-theme')
-
-                if (!themeSwitcher) {
-                    return
-                }
-
-                const themeSwitcherText = document.querySelector('#bd-theme-text')
-                const activeThemeIcon = document.querySelector('.theme-icon-active use')
-                const btnToActive = document.querySelector(`[data-bs-theme-value="${theme}"]`)
-                const svgOfActiveBtn = btnToActive.querySelector('svg use').getAttribute('href')
-
-                document.querySelectorAll('[data-bs-theme-value]').forEach(element => {
-                    element.classList.remove('active')
-                    element.setAttribute('aria-pressed', 'false')
-                })
-
-                btnToActive.classList.add('active')
-                btnToActive.setAttribute('aria-pressed', 'true')
-
-                if (focus) {
-                    themeSwitcher.focus()
-                }
-            }
-
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-                const storedTheme = getStoredTheme()
-                if (storedTheme !== 'light' && storedTheme !== 'dark') {
-                    setTheme(getPreferredTheme())
-                }
-            })
-
-            window.addEventListener('DOMContentLoaded', () => {
-                showActiveTheme(getPreferredTheme())
-
-                document.querySelectorAll('[data-bs-theme-value]')
-                    .forEach(toggle => {
-                        toggle.addEventListener('click', () => {
-                            const theme = toggle.getAttribute('data-bs-theme-value')
-                            setStoredTheme(theme)
-                            setTheme(theme)
-                            showActiveTheme(theme, true)
-                        })
-                    })
-            })
-        })()
-    </script>
 
     {% block extra_js %}{% endblock %}
 </body>
