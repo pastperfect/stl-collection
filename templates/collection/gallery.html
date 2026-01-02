@@ -29,41 +29,53 @@
 
 <!-- Search and Filter Form -->
 <div class="filter-form">
-    <form method="get" class="row g-3">
-        <div class="col-md-4">
-            <label for="search" class="form-label">Search</label>
-            <input type="text" class="form-control" id="search" name="search" value="{{ search_query }}" placeholder="Search by name, publisher, range, or tags...">
+    <form method="get">
+        <!-- Search Bar with Publisher and Range -->
+        <div class="row mb-3 g-2">
+            <div class="col-md-6">
+                <label for="search" class="form-label">Search</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="search" name="search" value="{{ search_query }}" placeholder="Search by name, publisher, range, or tags...">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label for="publisher" class="form-label">Publisher</label>
+                <select class="form-select" id="publisher" name="publisher">
+                    <option value="">All Publishers</option>
+                    {% for pub in publishers %}
+                    <option value="{{ pub }}" {% if pub == publisher_filter %}selected{% endif %}>{{ pub }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="range" class="form-label">Range</label>
+                <select class="form-select" id="range" name="range">
+                    <option value="">All Ranges</option>
+                    {% for rng in ranges %}
+                    <option value="{{ rng }}" {% if rng == range_filter %}selected{% endif %}>{{ rng }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
-        <div class="col-md-2">
-            <label for="publisher" class="form-label">Publisher</label>
-            <select class="form-select" id="publisher" name="publisher">
-                <option value="">All Publishers</option>
-                {% for pub in publishers %}
-                <option value="{{ pub }}" {% if pub == publisher_filter %}selected{% endif %}>{{ pub }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label for="range" class="form-label">Range</label>
-            <select class="form-select" id="range" name="range">
-                <option value="">All Ranges</option>
-                {% for rng in ranges %}
-                <option value="{{ rng }}" {% if rng == range_filter %}selected{% endif %}>{{ rng }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label for="tags" class="form-label">Tags</label>
-            <select class="form-select" id="tags" name="tags" multiple>
-                {% for tag in all_tags %}
-                <option value="{{ tag.id }}" {% if tag.id|stringformat:"s" in tag_filter %}selected{% endif %}>{{ tag.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-1 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-search"></i>
-            </button>
+        
+        <!-- Tag Type Filters -->
+        <div class="row g-2">
+            {% for tag_type in tag_types %}
+            <div class="col-md-2">
+                <label for="tag_type_{{ tag_type.id }}" class="form-label" style="color: {{ tag_type.color }};">{{ tag_type.name }}</label>
+                <select class="form-select form-select-sm" id="tag_type_{{ tag_type.id }}" name="tag_type_{{ tag_type.id }}">
+                    <option value="">All</option>
+                    {% for tag in all_tags %}
+                        {% if tag.tag_type.id == tag_type.id %}
+                        <option value="{{ tag.id }}" {% if tag.id|stringformat:"s" in tag_filter %}selected{% endif %}>{{ tag.name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            {% endfor %}
         </div>
     </form>
 </div>

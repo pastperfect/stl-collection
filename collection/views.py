@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.core.files.base import ContentFile
 from image_upload.models import Entry, Image
 from image_upload.forms import EntryEditForm
-from tags.models import Tag
+from tags.models import Tag, TagType
 import os
 import re
 import uuid
@@ -70,6 +70,7 @@ def gallery(request):
         Q(range__isnull=True) | Q(range__exact='')
     ).values_list('range', flat=True).distinct().order_by('range')
     all_tags = Tag.objects.all()
+    tag_types = TagType.objects.filter(is_active=True).order_by('sort_order', 'name')
     
     # Pagination
     paginator = Paginator(entries, 12)
@@ -85,6 +86,7 @@ def gallery(request):
         'publishers': publishers,
         'ranges': ranges,
         'all_tags': all_tags,
+        'tag_types': tag_types,
     })
 
 @staff_member_required
