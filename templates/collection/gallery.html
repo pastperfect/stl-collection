@@ -43,7 +43,7 @@
             </div>
             <div class="col-md-3">
                 <label for="publisher" class="form-label">Publisher</label>
-                <select class="form-select" id="publisher" name="publisher">
+                <select class="form-select" id="publisher" name="publisher" onchange="this.form.submit()">
                     <option value="">All Publishers</option>
                     {% for pub in publishers %}
                     <option value="{{ pub }}" {% if pub == publisher_filter %}selected{% endif %}>{{ pub }}</option>
@@ -52,7 +52,7 @@
             </div>
             <div class="col-md-3">
                 <label for="range" class="form-label">Range</label>
-                <select class="form-select" id="range" name="range">
+                <select class="form-select" id="range" name="range" onchange="this.form.submit()">
                     <option value="">All Ranges</option>
                     {% for rng in ranges %}
                     <option value="{{ rng }}" {% if rng == range_filter %}selected{% endif %}>{{ rng }}</option>
@@ -66,11 +66,20 @@
             {% for tag_type in tag_types %}
             <div class="col-md-2">
                 <label for="tag_type_{{ tag_type.id }}" class="form-label" style="color: {{ tag_type.color }};">{{ tag_type.name }}</label>
-                <select class="form-select form-select-sm" id="tag_type_{{ tag_type.id }}" name="tag_type_{{ tag_type.id }}" onchange="this.form.submit()">
+                <select class="form-select form-select-sm tag-type-select" 
+                        id="tag_type_{{ tag_type.id }}" 
+                        name="tag_type_{{ tag_type.id }}"
+                        data-tag-type-id="{{ tag_type.id }}"
+                        data-reference-type-id="{% if tag_type.reference_tagtype %}{{ tag_type.reference_tagtype.id }}{% endif %}"
+                        onchange="handleTagTypeChange(this)">
                     <option value="">All</option>
                     {% for tag in all_tags %}
                         {% if tag.tag_type.id == tag_type.id %}
-                        <option value="{{ tag.id }}" {% if tag.id|stringformat:"s" in tag_filter %}selected{% endif %}>{{ tag.name }}</option>
+                        <option value="{{ tag.id }}" 
+                                data-reference-tag-id="{% if tag.reference_tag %}{{ tag.reference_tag.id }}{% endif %}"
+                                {% if tag.id|stringformat:"s" in tag_filter %}selected{% endif %}>
+                            {{ tag.name }}
+                        </option>
                         {% endif %}
                     {% endfor %}
                 </select>
@@ -79,6 +88,83 @@
         </div>
     </form>
 </div>
+
+<script>
+function handleTagTypeChange(selectElement) {
+    const tagTypeId = selectElement.getAttribute('data-tag-type-id');
+    const selectedTagId = selectElement.value;
+    
+    // Find all tag type selects that reference this tag type
+    const allSelects = document.querySelectorAll('.tag-type-select');
+    allSelects.forEach(otherSelect => {
+        const referenceTypeId = otherSelect.getAttribute('data-reference-type-id');
+        
+        // If this select references the changed tag type
+        if (referenceTypeId === tagTypeId) {
+            filterDependentSelect(otherSelect, selectedTagId);
+        }
+    });
+    
+    // Submit the form
+    selectElement.form.submit();
+}
+
+function filterDependentSelect(selectElement, referenceTagId) {
+    const options = selectElement.querySelectorAll('option');
+    
+    // If "All" is selected in the reference, show all options
+    if (!referenceTagId) {
+        options.forEach(option => {
+            option.style.display = 'block';
+        });
+    } else {
+        // Filter options based on reference tag
+        options.forEach(option => {
+            if (option.value === '') {
+                // Always show "All" option
+                option.style.display = 'block';
+            } else {
+                const refTagId = option.getAttribute('data-reference-tag-id');
+                // Show only if it references the selected tag or has no reference
+                if (refTagId === referenceTagId || !refTagId) {
+                    option.style.display = 'block';
+                } else {
+                    option.style.display = 'none';
+                }
+            }
+        });
+        
+        // Reset the dependent select if current selection is now hidden
+        const currentValue = selectElement.value;
+        if (currentValue) {
+            const currentOption = selectElement.querySelector(`option[value="${currentValue}"]`);
+            if (currentOption && currentOption.style.display === 'none') {
+                selectElement.value = '';
+            }
+        }
+    }
+}
+
+// Apply filtering on page load based on current selections
+document.addEventListener('DOMContentLoaded', function() {
+    const allSelects = document.querySelectorAll('.tag-type-select');
+    
+    // For each select with a reference type
+    allSelects.forEach(selectElement => {
+        const referenceTypeId = selectElement.getAttribute('data-reference-type-id');
+        
+        if (referenceTypeId) {
+            // Find the referenced select
+            const referenceSelect = document.querySelector(`.tag-type-select[data-tag-type-id="${referenceTypeId}"]`);
+            
+            if (referenceSelect && referenceSelect.value) {
+                // Apply filtering based on the reference's current value
+                filterDependentSelect(selectElement, referenceSelect.value);
+            }
+        }
+    });
+});
+</script>
 
 <!-- Results Info -->
 <div class="row">
