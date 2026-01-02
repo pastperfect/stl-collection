@@ -274,12 +274,12 @@
                 {% endif %}
                 <div class="mb-2">                    {% for tag in entry.tags.all %}
                     <span class="badge tag-badge quick-tag assigned" 
-                          style="background-color: {{ tag.get_color }} !important; color: {{ tag.get_text_color }} !important;"
-                          data-tag-id="{{ tag.id }}" 
-                          data-tag-name="{{ tag.name }}"
-                          data-entry-id="{{ entry.id }}">
-                        {{ tag.name }}
-                    </span>
+                    style="background-color: {{ tag.get_color }} !important; color: {{ tag.get_text_color }} !important;"
+                    data-tag-id="{{ tag.id }}" 
+                    data-tag-name="{{ tag.name }}"
+                    data-entry-id="{{ entry.id }}">
+                  {{ tag.name }}
+              </span>
                     {% empty %}
                     <small class="text-muted">No tags</small>
                     {% endfor %}

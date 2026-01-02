@@ -93,6 +93,19 @@
                     </div>
 
                     <div class="mb-3">
+                        <label for="{{ form.reference_tagtype.id_for_label }}" class="form-label">Reference Tag Type</label>
+                        {{ form.reference_tagtype }}
+                        {% if form.reference_tagtype.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.reference_tagtype.errors.0 }}
+                            </div>
+                        {% endif %}
+                        {% if form.reference_tagtype.help_text %}
+                            <div class="form-text">{{ form.reference_tagtype.help_text }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
                         <label for="{{ form.color.id_for_label }}" class="form-label">Color *</label>
                         <div class="d-flex align-items-center">
                             {{ form.color }}

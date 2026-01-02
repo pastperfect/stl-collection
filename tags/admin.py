@@ -6,8 +6,8 @@ from .widgets import ColorPickerWidget
 
 @admin.register(TagType)
 class TagTypeAdmin(ModelAdmin):
-    list_display = ['name', 'color_preview', 'sort_order', 'is_active', 'tag_count', 'created_at']
-    list_filter = ['is_active', 'created_at']
+    list_display = ['name', 'color_preview', 'reference_tagtype', 'sort_order', 'is_active', 'tag_count', 'created_at']
+    list_filter = ['is_active', 'created_at', 'reference_tagtype']
     search_fields = ['name', 'description']
     ordering = ['sort_order', 'name']
     list_editable = ['sort_order', 'is_active']
@@ -35,8 +35,8 @@ class TagTypeAdmin(ModelAdmin):
 
 @admin.register(Tag)
 class TagAdmin(ModelAdmin):
-    list_display = ['name', 'tag_type', 'usage_count', 'created_at']
-    list_filter = ['tag_type', 'created_at']
+    list_display = ['name', 'tag_type', 'reference_tag', 'usage_count', 'created_at']
+    list_filter = ['tag_type', 'created_at', 'reference_tag']
     search_fields = ['name']
     ordering = ['tag_type__sort_order', 'tag_type__name', 'name']
     

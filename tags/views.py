@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.http import JsonResponse
 from .models import Tag, TagType
 from .forms import TagForm, TagTypeForm
 
@@ -162,4 +163,25 @@ def delete_tagtype(request, tagtype_id):
     
     return render(request, 'tags/delete_tagtype.html', {
         'tagtype': tagtype
+    })
+
+@staff_member_required
+def get_reference_tags(request, tagtype_id):
+    """API endpoint to get available reference tags for a given tag type"""
+    tagtype = get_object_or_404(TagType, id=tagtype_id)
+    
+    # Check if this tag type has a reference_tagtype configured
+    if not tagtype.reference_tagtype:
+        return JsonResponse({
+            'has_reference': False,
+            'tags': []
+        })
+    
+    # Get all tags of the reference_tagtype
+    reference_tags = Tag.objects.filter(tag_type=tagtype.reference_tagtype).values('id', 'name')
+    
+    return JsonResponse({
+        'has_reference': True,
+        'reference_tagtype_name': tagtype.reference_tagtype.name,
+        'tags': list(reference_tags)
     })

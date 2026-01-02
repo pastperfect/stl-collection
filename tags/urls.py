@@ -13,4 +13,6 @@ urlpatterns = [
     path('tagtype/create/', views.create_tagtype, name='create_tagtype'),
     path('tagtype/edit/<int:tagtype_id>/', views.edit_tagtype, name='edit_tagtype'),
     path('tagtype/delete/<int:tagtype_id>/', views.delete_tagtype, name='delete_tagtype'),
+    # API endpoints
+    path('api/reference-tags/<int:tagtype_id>/', views.get_reference_tags, name='api_reference_tags'),
 ]

@@ -130,24 +130,35 @@ def bulk_assign_tags(request):
             return JsonResponse({'success': False, 'error': 'Missing entry IDs or tag IDs'})
         
         entries = Entry.objects.filter(id__in=entry_ids)
-        tags = Tag.objects.filter(id__in=tag_ids)
+        tags = Tag.objects.filter(id__in=tag_ids).select_related('reference_tag')
         
         affected_count = 0
+        auto_assigned_count = 0
         
         for entry in entries:
             if action == 'add':
                 for tag in tags:
                     entry.tags.add(tag)
                     affected_count += 1
+                    
+                    # Auto-assign reference tag if configured
+                    if tag.reference_tag:
+                        entry.tags.add(tag.reference_tag)
+                        auto_assigned_count += 1
             elif action == 'remove':
                 for tag in tags:
                     entry.tags.remove(tag)
                     affected_count += 1
         
+        message = f'Successfully {"added" if action == "add" else "removed"} tags for {len(entries)} entr{"y" if len(entries) == 1 else "ies"}'
+        if auto_assigned_count > 0:
+            message += f' (also auto-assigned {auto_assigned_count} reference tag{"s" if auto_assigned_count != 1 else ""})'
+        
         return JsonResponse({
             'success': True,
             'affected_count': affected_count,
-            'message': f'Successfully {"added" if action == "add" else "removed"} tags for {len(entries)} entr{"y" if len(entries) == 1 else "ies"}'
+            'auto_assigned_count': auto_assigned_count,
+            'message': message
         })
         
     except Exception as e:
@@ -169,6 +180,8 @@ def quick_tag_assign(request):
         entry = get_object_or_404(Entry, id=entry_id)
         tag = get_object_or_404(Tag, id=tag_id)
         
+        auto_assigned = False
+        
         if action == 'toggle':
             if tag in entry.tags.all():
                 entry.tags.remove(tag)
@@ -176,9 +189,17 @@ def quick_tag_assign(request):
             else:
                 entry.tags.add(tag)
                 assigned = True
+                # Auto-assign reference tag if configured
+                if tag.reference_tag:
+                    entry.tags.add(tag.reference_tag)
+                    auto_assigned = True
         elif action == 'add':
             entry.tags.add(tag)
             assigned = True
+            # Auto-assign reference tag if configured
+            if tag.reference_tag:
+                entry.tags.add(tag.reference_tag)
+                auto_assigned = True
         elif action == 'remove':
             entry.tags.remove(tag)
             assigned = False
@@ -186,6 +207,7 @@ def quick_tag_assign(request):
         return JsonResponse({
             'success': True,
             'assigned': assigned,
+            'auto_assigned': auto_assigned,
             'tag_count': entry.tags.count()
         })
         

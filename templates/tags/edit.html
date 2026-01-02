@@ -31,6 +31,32 @@
                         <div class="form-text">Select the category this tag belongs to.</div>
                     </div>
 
+                    <div class="mb-3">
+                        <label for="{{ form.value.id_for_label }}" class="form-label">Value</label>
+                        {{ form.value }}
+                        {% if form.value.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.value.errors.0 }}
+                            </div>
+                        {% endif %}
+                        {% if form.value.help_text %}
+                            <div class="form-text">{{ form.value.help_text }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3" id="referenceTagContainer">
+                        <label for="{{ form.reference_tag.id_for_label }}" class="form-label">Reference Tag</label>
+                        {{ form.reference_tag }}
+                        {% if form.reference_tag.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.reference_tag.errors.0 }}
+                            </div>
+                        {% endif %}
+                        {% if form.reference_tag.help_text %}
+                            <div class="form-text">{{ form.reference_tag.help_text }}</div>
+                        {% endif %}
+                    </div>
+
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <a href="{% url 'tags:list' %}" class="btn btn-secondary me-md-2">
                             <i class="bi bi-arrow-left"></i> Cancel
@@ -49,4 +75,59 @@
         </div>
     </div>
 </div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tagTypeSelect = document.getElementById('{{ form.tag_type.id_for_label }}');
+    const referenceTagSelect = document.getElementById('{{ form.reference_tag.id_for_label }}');
+    const referenceTagContainer = document.getElementById('referenceTagContainer');
+    
+    // Update reference_tag options when tag_type changes
+    if (tagTypeSelect && referenceTagSelect) {
+        tagTypeSelect.addEventListener('change', function() {
+            const tagTypeId = this.value;
+            
+            if (!tagTypeId) {
+                referenceTagContainer.style.display = 'none';
+                referenceTagSelect.innerHTML = '<option value="">---------</option>';
+                return;
+            }
+            
+            // Fetch tag types to check if selected type has reference_tagtype
+            fetch(`/tags/api/reference-tags/${tagTypeId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.has_reference && data.tags.length > 0) {
+                        referenceTagContainer.style.display = 'block';
+                        const currentValue = referenceTagSelect.value;
+                        referenceTagSelect.innerHTML = '<option value="">---------</option>';
+                        data.tags.forEach(tag => {
+                            const option = document.createElement('option');
+                            option.value = tag.id;
+                            option.textContent = tag.name;
+                            if (tag.id == currentValue) {
+                                option.selected = true;
+                            }
+                            referenceTagSelect.appendChild(option);
+                        });
+                    } else {
+                        referenceTagContainer.style.display = 'none';
+                        referenceTagSelect.innerHTML = '<option value="">---------</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching reference tags:', error);
+                    referenceTagContainer.style.display = 'none';
+                });
+        });
+        
+        // Initialize visibility on page load
+        if (!tagTypeSelect.value || referenceTagSelect.options.length <= 1) {
+            referenceTagContainer.style.display = 'none';
+        }
+    }
+});
+</script>
+{% endblock %}
 {% endblock %}
