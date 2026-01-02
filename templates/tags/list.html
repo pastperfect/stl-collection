@@ -296,7 +296,7 @@
                                                 <th>Name</th>
                                                 <th>Color</th>
                                                 <th>Reference Tag Type</th>
-                                                <th>Created</th>
+                                                <th>Sort Order</th>
                                                 <th>Tags Using This Type</th>
                                                 <th>Actions</th>
                                             </tr>
@@ -322,7 +322,7 @@
                                                         <span class="text-muted">None</span>
                                                     {% endif %}
                                                 </td>
-                                                <td>{{ tagtype.created_at|date:"M d, Y" }}</td>
+                                                <td>{{ tagtype.sort_order }}</td>
                                                 <td>
                                                     <span class="badge bg-info">{{ tagtype.tags.count }}</span>
                                                 </td>
