@@ -30,19 +30,10 @@ class EntryUploadForm(forms.ModelForm):
 
 class EntryEditForm(forms.ModelForm):
     """Form for editing entry metadata."""
-    tags = forms.ModelMultipleChoiceField(
-        queryset=Tag.objects.all(),
-        widget=forms.SelectMultiple(attrs={
-            'class': 'form-select',
-            'data-live-search': 'true',
-            'multiple': True
-        }),
-        required=False
-    )
     
     class Meta:
         model = Entry
-        fields = ['name', 'publisher', 'range', 'folder_location', 'notes', 'tags']
+        fields = ['name', 'publisher', 'range', 'folder_location', 'notes']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'publisher': forms.TextInput(attrs={'class': 'form-control'}),

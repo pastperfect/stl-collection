@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load collection_filters %}
 
 {% block title %}Edit {{ image.name }} - STL Collection{% endblock %}
 
@@ -65,13 +66,30 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="{{ form.tags.id_for_label }}" class="form-label">Tags</label>
-                        {{ form.tags }}
-                        {% if form.tags.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.tags.errors.0 }}
+                        <label class="form-label">Tags</label>
+                        <div class="row g-2">
+                            {% for tag_type in tag_types %}
+                            <div class="col-md-4">
+                                <label for="tag_type_{{ tag_type.id }}" class="form-label small" style="color: {{ tag_type.color }};">{{ tag_type.name }}</label>
+                                <select class="form-select form-select-sm tag-type-select"
+                                        id="tag_type_{{ tag_type.id }}"
+                                        name="tag_type_{{ tag_type.id }}"
+                                        data-tag-type-id="{{ tag_type.id }}"
+                                        data-reference-type-id="{% if tag_type.reference_tagtype %}{{ tag_type.reference_tagtype.id }}{% endif %}">
+                                    <option value="">None</option>
+                                    {% for tag in all_tags %}
+                                        {% if tag.tag_type.id == tag_type.id %}
+                                        <option value="{{ tag.id }}"
+                                                data-reference-tag-id="{% if tag.reference_tag %}{{ tag.reference_tag.id }}{% endif %}"
+                                                {% if current_tags and tag_type.id in current_tags and current_tags|dict_item:tag_type.id == tag.id %}selected{% endif %}>
+                                            {{ tag.name }}
+                                        </option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
                             </div>
-                        {% endif %}
+                            {% endfor %}
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -107,4 +125,78 @@
         </div>
     </div>
 </div>
+
+<script>
+/**
+ * Handle tag type selection change
+ * If a tag type has a reference, filter other dropdowns that depend on it
+ */
+function handleTagTypeChange(changedSelect) {
+    const selectedOption = changedSelect.options[changedSelect.selectedIndex];
+    const referenceTagId = selectedOption.getAttribute('data-reference-tag-id');
+    const tagTypeId = changedSelect.getAttribute('data-tag-type-id');
+    
+    // Find all dropdowns that reference this tag type
+    document.querySelectorAll('.tag-type-select').forEach(select => {
+        const dependsOnTypeId = select.getAttribute('data-reference-type-id');
+        if (dependsOnTypeId === tagTypeId) {
+            filterDependentSelect(select, referenceTagId);
+        }
+    });
+}
+
+/**
+ * Filter options in a dependent select based on reference tag
+ */
+function filterDependentSelect(select, referenceTagId) {
+    const options = select.querySelectorAll('option');
+    let hasVisibleOptions = false;
+    
+    options.forEach(option => {
+        if (option.value === '') {
+            // Always show "None" option
+            option.style.display = '';
+            return;
+        }
+        
+        const optionRefTagId = option.getAttribute('data-reference-tag-id');
+        
+        if (!referenceTagId || referenceTagId === '') {
+            // No reference selected, show all options
+            option.style.display = '';
+            hasVisibleOptions = true;
+        } else if (optionRefTagId === referenceTagId) {
+            // Reference matches, show option
+            option.style.display = '';
+            hasVisibleOptions = true;
+        } else {
+            // Reference doesn't match, hide option
+            option.style.display = 'none';
+            // If this option was selected, deselect it
+            if (option.selected) {
+                select.value = '';
+            }
+        }
+    });
+}
+
+// Initialize filters on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Attach change handlers to all tag type selects
+    document.querySelectorAll('.tag-type-select').forEach(select => {
+        select.addEventListener('change', function() {
+            handleTagTypeChange(this);
+        });
+    });
+    
+    // Apply initial filtering based on current selections
+    document.querySelectorAll('.tag-type-select').forEach(select => {
+        const selectedOption = select.options[select.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            handleTagTypeChange(select);
+        }
+    });
+});
+</script>
+
 {% endblock %}

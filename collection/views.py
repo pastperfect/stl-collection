@@ -119,6 +119,25 @@ def edit_image(request, image_id):
             # Save the entry
             updated_entry = form.save()
             
+            # Handle tag type selections
+            tag_types = TagType.objects.filter(is_active=True).order_by('sort_order', 'name')
+            selected_tags = []
+            
+            for tag_type in tag_types:
+                tag_param = request.POST.get(f'tag_type_{tag_type.id}', '')
+                if tag_param:
+                    try:
+                        tag_id = int(tag_param)
+                        selected_tags.append(tag_id)
+                    except (ValueError, TypeError):
+                        pass
+            
+            # Update the entry's tags
+            if selected_tags:
+                updated_entry.tags.set(selected_tags)
+            else:
+                updated_entry.tags.clear()
+            
             # Update denormalized fields in all associated images
             entry.images.update(
                 name=updated_entry.name,
@@ -154,10 +173,22 @@ def edit_image(request, image_id):
     else:
         form = EntryEditForm(instance=entry)
     
+    # Get tag types and all tags for dropdowns
+    tag_types = TagType.objects.filter(is_active=True, show_in_gallery=True).order_by('sort_order', 'name')
+    all_tags = Tag.objects.select_related('tag_type', 'reference_tag').all()
+    
+    # Get current tags for the entry
+    current_tags = {}
+    for tag in entry.tags.all():
+        current_tags[tag.tag_type.id] = tag.id
+    
     return render(request, 'collection/edit.html', {
         'form': form,
         'image': entry,  # Keep 'image' for template compatibility
-        'entry': entry
+        'entry': entry,
+        'tag_types': tag_types,
+        'all_tags': all_tags,
+        'current_tags': current_tags
     })
 
 @staff_member_required
