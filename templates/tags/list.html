@@ -106,16 +106,29 @@
                     <!-- Filter Section -->
                     <div class="card mb-3">
                         <div class="card-body">
-                            <form method="get" class="row g-3 align-items-end">
+                            <form method="get" class="row g-3 align-items-end" id="filterForm">
                                 <div class="col-md-3">
                                     <label for="tagTypeFilter" class="form-label">Filter by Tag Type</label>
-                                    <select name="tag_type" id="tagTypeFilter" class="form-select" onchange="this.form.submit()">
+                                    <select name="tag_type" id="tagTypeFilter" class="form-select">
                                         <option value="">All Types</option>
                                         <option value="none" {% if selected_tag_type == 'none' %}selected{% endif %}>No Type</option>
                                         {% for tag_type in tag_types %}
                                             <option value="{{ tag_type.id }}" 
+                                                    data-has-reference="{% if tag_type.reference_tagtype %}true{% else %}false{% endif %}"
                                                     {% if selected_tag_type == tag_type.id|stringformat:"s" %}selected{% endif %}>
                                                 {{ tag_type.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3" id="referenceTagFilterContainer" style="{% if not selected_tag_type_obj or not selected_tag_type_obj.reference_tagtype %}display: none;{% endif %}">
+                                    <label for="referenceTagFilter" class="form-label">Filter by Reference Tag</label>
+                                    <select name="reference_tag" id="referenceTagFilter" class="form-select">
+                                        <option value="">All References</option>
+                                        <option value="none" {% if selected_reference_tag == 'none' %}selected{% endif %}>No Reference</option>
+                                        {% for ref_tag in reference_tags %}
+                                            <option value="{{ ref_tag.id }}" {% if selected_reference_tag == ref_tag.id|stringformat:"s" %}selected{% endif %}>
+                                                {{ ref_tag.name }}
                                             </option>
                                         {% endfor %}
                                     </select>
@@ -125,7 +138,7 @@
                                         <i class="bi bi-funnel"></i> Filter
                                     </button>
                                 </div>
-                                {% if selected_tag_type %}
+                                {% if selected_tag_type or selected_reference_tag %}
                                     <div class="col-md-2">
                                         <a href="{% url 'tags:list' %}" class="btn btn-outline-danger">
                                             <i class="bi bi-x-circle"></i> Clear
@@ -134,7 +147,32 @@
                                 {% endif %}
                             </form>
                         </div>
-                    </div>                    {% if tags %}
+                    </div>
+
+                    <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const tagTypeFilter = document.getElementById('tagTypeFilter');
+                        const referenceTagFilterContainer = document.getElementById('referenceTagFilterContainer');
+                        const referenceTagFilter = document.getElementById('referenceTagFilter');
+                        const filterForm = document.getElementById('filterForm');
+
+                        tagTypeFilter.addEventListener('change', function() {
+                            const selectedOption = this.options[this.selectedIndex];
+                            const hasReference = selectedOption.getAttribute('data-has-reference') === 'true';
+                            
+                            if (hasReference && this.value && this.value !== 'none') {
+                                // Show the reference tag filter and submit to load reference tags
+                                filterForm.submit();
+                            } else {
+                                // Hide reference tag filter and clear its value
+                                referenceTagFilterContainer.style.display = 'none';
+                                referenceTagFilter.value = '';
+                                // Submit form to apply tag type filter
+                                filterForm.submit();
+                            }
+                        });
+                    });
+                    </script>                    {% if tags %}
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <small class="text-muted">
                                 Showing {{ tags|length }} tag{{ tags|length|pluralize }}

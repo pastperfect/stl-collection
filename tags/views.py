@@ -13,6 +13,10 @@ def tag_list(request):
     # Get all tag types for the filter dropdown
     tag_types = TagType.objects.filter(is_active=True)
     
+    # Variables to track selected filters
+    selected_tag_type_obj = None
+    reference_tags = []
+    
     # Apply tag type filter if provided
     tag_type_filter = request.GET.get('tag_type')
     if tag_type_filter:
@@ -23,13 +27,34 @@ def tag_list(request):
             try:
                 tag_type_id = int(tag_type_filter)
                 tags = tags.filter(tag_type_id=tag_type_id)
+                # Get the selected tag type object to check for reference_tagtype
+                selected_tag_type_obj = TagType.objects.filter(id=tag_type_id).first()
+                
+                # If this tag type has a reference_tagtype, get those tags for the filter
+                if selected_tag_type_obj and selected_tag_type_obj.reference_tagtype:
+                    reference_tags = Tag.objects.filter(tag_type=selected_tag_type_obj.reference_tagtype)
             except (ValueError, TypeError):
                 pass  # Invalid filter value, ignore
+    
+    # Apply reference tag filter if provided
+    reference_tag_filter = request.GET.get('reference_tag')
+    if reference_tag_filter and reference_tag_filter != 'none':
+        try:
+            reference_tag_id = int(reference_tag_filter)
+            tags = tags.filter(reference_tag_id=reference_tag_id)
+        except (ValueError, TypeError):
+            pass  # Invalid filter value, ignore
+    elif reference_tag_filter == 'none':
+        # Filter for tags with no reference tag
+        tags = tags.filter(reference_tag__isnull=True)
     
     return render(request, 'tags/list.html', {
         'tags': tags,
         'tag_types': tag_types,
         'selected_tag_type': tag_type_filter,
+        'selected_tag_type_obj': selected_tag_type_obj,
+        'reference_tags': reference_tags,
+        'selected_reference_tag': reference_tag_filter,
         'active_tab': 'tags'
     })
 
