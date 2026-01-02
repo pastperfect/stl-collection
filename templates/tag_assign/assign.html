@@ -197,17 +197,34 @@
 <div class="quick-tags-panel mb-4">
     <div class="card">
         <div class="card-header">
-            <div class="row align-items-center">                <div class="col-md-6">
+            <div class="row align-items-center">                <div class="col-md-4">
                     <h5 class="card-title mb-0">
                         <i class="bi bi-lightning"></i> Quick Tags
                     </h5>
                     <small class="text-muted">Click tags to quickly assign to selected entries</small>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <label for="tagTypeFilter" class="form-label mb-1 small">Filter by Type</label>
                     <select class="form-select form-select-sm" id="tagTypeFilter" onchange="filterQuickTags()">
                         <option value="">All Tag Types</option>
                         {% for tag_type in tag_types %}
-                        <option value="{{ tag_type.id }}" {% if tag_type.id|stringformat:"s" == tag_type_filter %}selected{% endif %}>{{ tag_type.name }}</option>
+                        <option value="{{ tag_type.id }}" 
+                                data-has-reference="{% if tag_type.reference_tagtype %}true{% else %}false{% endif %}"
+                                {% if tag_type.id|stringformat:"s" == tag_type_filter %}selected{% endif %}>
+                            {{ tag_type.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4" id="referenceTagFilterContainer" style="{% if not selected_tag_type_obj or not selected_tag_type_obj.reference_tagtype %}display: none;{% endif %}">
+                    <label for="referenceTagFilter" class="form-label mb-1 small">Filter by Reference</label>
+                    <select class="form-select form-select-sm" id="referenceTagFilter" onchange="filterQuickTags()">
+                        <option value="">All References</option>
+                        <option value="none" {% if reference_tag_filter == 'none' %}selected{% endif %}>No Reference</option>
+                        {% for ref_tag in reference_tags %}
+                        <option value="{{ ref_tag.id }}" {% if reference_tag_filter == ref_tag.id|stringformat:"s" %}selected{% endif %}>
+                            {{ ref_tag.name }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -597,13 +614,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Filter quick tags by type (outside DOMContentLoaded to be accessible globally)
 function filterQuickTags() {
-    const selectedType = document.getElementById('tagTypeFilter').value;
+    const tagTypeFilter = document.getElementById('tagTypeFilter');
+    const referenceTagFilter = document.getElementById('referenceTagFilter');
+    const referenceTagFilterContainer = document.getElementById('referenceTagFilterContainer');
+    const selectedType = tagTypeFilter.value;
+    const selectedOption = tagTypeFilter.options[tagTypeFilter.selectedIndex];
+    const hasReference = selectedOption.getAttribute('data-has-reference') === 'true';
+    
     const currentUrl = new URL(window.location);
     
     if (selectedType) {
         currentUrl.searchParams.set('tag_type', selectedType);
+        
+        // If the selected tag type has reference, handle the reference filter
+        if (hasReference && referenceTagFilter) {
+            const selectedReference = referenceTagFilter.value;
+            if (selectedReference) {
+                // Set reference filter if a value is selected
+                currentUrl.searchParams.set('reference_tag', selectedReference);
+            } else {
+                // Remove reference filter if "All References" is selected
+                currentUrl.searchParams.delete('reference_tag');
+            }
+        } else {
+            // Remove reference filter if tag type doesn't support it
+            currentUrl.searchParams.delete('reference_tag');
+        }
     } else {
         currentUrl.searchParams.delete('tag_type');
+        currentUrl.searchParams.delete('reference_tag');
     }
     
     // Preserve other filter parameters

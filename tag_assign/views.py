@@ -77,15 +77,40 @@ def assign_tags(request):
     
     all_tags = Tag.objects.all().order_by('tag_type__sort_order', 'tag_type__name', 'name')
     
+    # Variables for reference tag filter
+    selected_tag_type_obj = None
+    reference_tags = []
+    reference_tag_filter = request.GET.get('reference_tag', '')
+    
     # Filter quick tags by type if specified
     quick_tags = all_tags
     if tag_type_filter:
         try:
             tag_type_id = int(tag_type_filter)
             quick_tags = quick_tags.filter(tag_type_id=tag_type_id)
+            
+            # Get the selected tag type object to check for reference_tagtype
+            selected_tag_type_obj = TagType.objects.filter(id=tag_type_id).first()
+            
+            # If this tag type has a reference_tagtype, get those tags for the filter
+            if selected_tag_type_obj and selected_tag_type_obj.reference_tagtype:
+                reference_tags = Tag.objects.filter(
+                    tag_type=selected_tag_type_obj.reference_tagtype
+                ).order_by('name')
         except (ValueError, TypeError):
             # If conversion fails, show all tags
             pass
+    
+    # Apply reference tag filter if provided
+    if reference_tag_filter and tag_type_filter:
+        if reference_tag_filter == 'none':
+            quick_tags = quick_tags.filter(reference_tag__isnull=True)
+        else:
+            try:
+                reference_tag_id = int(reference_tag_filter)
+                quick_tags = quick_tags.filter(reference_tag_id=reference_tag_id)
+            except (ValueError, TypeError):
+                pass
     
     # Get all tag types for the filter dropdown
     tag_types = TagType.objects.filter(is_active=True).order_by('sort_order', 'name')
@@ -112,6 +137,9 @@ def assign_tags(request):
         'untagged_count': untagged_count,
         'tagged_count': tagged_count,
         'filtered_count': page_obj.paginator.count,
+        'selected_tag_type_obj': selected_tag_type_obj,
+        'reference_tags': reference_tags,
+        'reference_tag_filter': reference_tag_filter,
     }
     
     return render(request, 'tag_assign/assign.html', context)
