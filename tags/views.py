@@ -232,3 +232,19 @@ def update_tagtype_order(request):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+@staff_member_required
+@require_POST
+def toggle_gallery_visibility(request, tagtype_id):
+    """API endpoint to toggle tag type visibility in Collection Gallery"""
+    try:
+        tagtype = get_object_or_404(TagType, id=tagtype_id)
+        data = json.loads(request.body)
+        show_in_gallery = data.get('show_in_gallery', True)
+        
+        tagtype.show_in_gallery = show_in_gallery
+        tagtype.save()
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

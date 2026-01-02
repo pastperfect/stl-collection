@@ -66,7 +66,7 @@
             {% for tag_type in tag_types %}
             <div class="col-md-2">
                 <label for="tag_type_{{ tag_type.id }}" class="form-label" style="color: {{ tag_type.color }};">{{ tag_type.name }}</label>
-                <select class="form-select form-select-sm" id="tag_type_{{ tag_type.id }}" name="tag_type_{{ tag_type.id }}">
+                <select class="form-select form-select-sm" id="tag_type_{{ tag_type.id }}" name="tag_type_{{ tag_type.id }}" onchange="this.form.submit()">
                     <option value="">All</option>
                     {% for tag in all_tags %}
                         {% if tag.tag_type.id == tag_type.id %}

@@ -321,6 +321,7 @@ tbody.sortable tr {
                                                 <th>Color</th>
                                                 <th>Reference Tag Type</th>
                                                 <th>Sort Order</th>
+                                                <th>Show in Gallery</th>
                                                 <th>Tags Using This Type</th>
                                                 <th>Actions</th>
                                             </tr>
@@ -350,6 +351,11 @@ tbody.sortable tr {
                                                     {% endif %}
                                                 </td>
                                                 <td>{{ tagtype.sort_order }}</td>
+                                                <td class="text-center">
+                                                    <input type="checkbox" class="form-check-input" 
+                                                           {% if tagtype.show_in_gallery %}checked{% endif %}
+                                                           onchange="toggleGalleryVisibility({{ tagtype.id }}, this.checked)">
+                                                </td>
                                                 <td>
                                                     <span class="badge bg-info">{{ tagtype.tags.count }}</span>
                                                 </td>
@@ -437,5 +443,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function toggleGalleryVisibility(tagTypeId, isVisible) {
+    fetch(`/tags/api/tagtype/${tagTypeId}/toggle-gallery/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ show_in_gallery: isVisible })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Failed to update visibility: ' + (data.error || 'Unknown error'));
+            // Revert checkbox state
+            event.target.checked = !isVisible;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update visibility');
+        // Revert checkbox state
+        event.target.checked = !isVisible;
+    });
+}
 </script>
 {% endblock %}

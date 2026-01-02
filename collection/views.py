@@ -54,11 +54,28 @@ def gallery(request):
     if range_filter:
         entries = entries.filter(range__icontains=range_filter)
     
-    # Filter by tags (AND logic - entry must have ALL selected tags)
-    tag_filter = request.GET.getlist('tags')
+    # Get tag types for filters
+    tag_types = TagType.objects.filter(is_active=True, show_in_gallery=True).order_by('sort_order', 'name')
+    
+    # Filter by individual tag type selections (AND logic - entry must have ALL selected tags)
+    tag_filter = []
+    selected_tags = {}  # Track which tag is selected for each tag type
+    
+    for tag_type in tag_types:
+        tag_param = request.GET.get(f'tag_type_{tag_type.id}', '')
+        if tag_param:
+            try:
+                tag_id = int(tag_param)
+                # Add to filter list for display purposes
+                tag_filter.append(str(tag_id))
+                # Track the selection
+                selected_tags[tag_type.id] = tag_id
+                # Filter entries that have this specific tag
+                entries = entries.filter(tags__id=tag_id)
+            except (ValueError, TypeError):
+                pass
+    
     if tag_filter:
-        for tag in tag_filter:
-            entries = entries.filter(tags=tag)
         entries = entries.distinct()
     
     # Get filter options for dropdowns
@@ -70,7 +87,6 @@ def gallery(request):
         Q(range__isnull=True) | Q(range__exact='')
     ).values_list('range', flat=True).distinct().order_by('range')
     all_tags = Tag.objects.all()
-    tag_types = TagType.objects.filter(is_active=True).order_by('sort_order', 'name')
     
     # Pagination
     paginator = Paginator(entries, 12)
@@ -83,6 +99,7 @@ def gallery(request):
         'publisher_filter': publisher_filter,
         'range_filter': range_filter,
         'tag_filter': tag_filter,
+        'selected_tags': selected_tags,
         'publishers': publishers,
         'ranges': ranges,
         'all_tags': all_tags,

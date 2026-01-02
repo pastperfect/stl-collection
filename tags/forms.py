@@ -70,7 +70,7 @@ class TagForm(forms.ModelForm):
 class TagTypeForm(forms.ModelForm):
     class Meta:
         model = TagType
-        fields = ['name', 'description', 'color', 'reference_tagtype', 'sort_order', 'is_active']
+        fields = ['name', 'description', 'color', 'reference_tagtype', 'sort_order', 'is_active', 'show_in_gallery']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -93,6 +93,9 @@ class TagTypeForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={
                 'class': 'form-check-input'
             }),
+            'show_in_gallery': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
         }
         
     def __init__(self, *args, **kwargs):
@@ -103,6 +106,7 @@ class TagTypeForm(forms.ModelForm):
         self.fields['reference_tagtype'].help_text = "Optional: Allow tags of this type to reference tags from another tag type (e.g., GW Alternative → Faction)"
         self.fields['sort_order'].help_text = "Lower numbers appear first in lists (0 = first)"
         self.fields['is_active'].help_text = "Inactive types won't appear in tag creation forms"
+        self.fields['show_in_gallery'].help_text = "Display this tag type as a filter in the Collection Gallery"
         
         # Exclude self from reference_tagtype dropdown when editing
         if self.instance.pk:
