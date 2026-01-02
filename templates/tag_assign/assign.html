@@ -166,16 +166,20 @@
                     </div>
                 </div>                <div class="col-md-6">
                     <div class="d-flex align-items-center">
-                        <select class="form-select form-select-sm me-2" id="bulkTagTypeFilter" style="max-width: 150px;" onchange="filterBulkTags()">
+                        <select class="form-select form-select-sm me-2" id="bulkTagTypeFilter" style="max-width: 150px;" onchange="onBulkTagTypeChange()">
                             <option value="">All Types</option>
                             {% for tag_type in tag_types %}
-                            <option value="{{ tag_type.id }}">{{ tag_type.name }}</option>
+                            <option value="{{ tag_type.id }}" data-has-reference="{% if tag_type.reference_tagtype %}true{% else %}false{% endif %}">{{ tag_type.name }}</option>
                             {% endfor %}
+                        </select>
+                        <select class="form-select form-select-sm me-2" id="bulkReferenceTagFilter" style="max-width: 150px; display: none;" onchange="applyBulkTagFilters()">
+                            <option value="">All References</option>
+                            <option value="none">No Reference</option>
                         </select>
                         <select class="form-select form-select-sm me-2" id="bulkTagSelect" style="max-width: 200px;">
                             <option value="">Select tags...</option>
                             {% for tag in all_tags %}
-                            <option value="{{ tag.id }}" data-tag-type="{{ tag.tag_type.id|default:'' }}">{{ tag.name }}</option>
+                            <option value="{{ tag.id }}" data-tag-type="{{ tag.tag_type.id|default:'' }}" data-reference-tag="{{ tag.reference_tag.id|default:'' }}">{{ tag.name }}</option>
                             {% endfor %}
                         </select>
                         <div class="btn-group" role="group">
@@ -649,10 +653,63 @@ function filterQuickTags() {
     window.location.href = currentUrl.toString();
 }
 
-// Filter bulk tags dropdown by tag type
-function filterBulkTags() {
-    const selectedType = document.getElementById('bulkTagTypeFilter').value;
+// Handle tag type filter change - updates reference filter and applies filtering
+function onBulkTagTypeChange() {
+    const tagTypeFilter = document.getElementById('bulkTagTypeFilter');
+    const referenceTagFilter = document.getElementById('bulkReferenceTagFilter');
     const tagSelect = document.getElementById('bulkTagSelect');
+    const selectedType = tagTypeFilter.value;
+    const selectedOption = tagTypeFilter.options[tagTypeFilter.selectedIndex];
+    const hasReference = selectedOption.getAttribute('data-has-reference') === 'true';
+    const allOptions = tagSelect.querySelectorAll('option');
+    
+    // Handle reference tag filter visibility and population
+    if (selectedType && hasReference) {
+        // Show reference filter and populate it
+        referenceTagFilter.style.display = 'block';
+        
+        // Clear existing options except the default ones
+        referenceTagFilter.innerHTML = '<option value="">All References</option><option value="none">No Reference</option>';
+        
+        // Get unique reference tags for this tag type
+        const referenceTagsMap = new Map();
+        allOptions.forEach(option => {
+            if (option.value && option.getAttribute('data-tag-type') === selectedType) {
+                const refTagId = option.getAttribute('data-reference-tag');
+                if (refTagId) {
+                    // Find the reference tag option to get its name
+                    const refTagOption = tagSelect.querySelector(`option[value="${refTagId}"]`);
+                    if (refTagOption && !referenceTagsMap.has(refTagId)) {
+                        referenceTagsMap.set(refTagId, refTagOption.textContent);
+                    }
+                }
+            }
+        });
+        
+        // Add reference tag options to the filter
+        referenceTagsMap.forEach((name, id) => {
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = name;
+            referenceTagFilter.appendChild(option);
+        });
+    } else {
+        // Hide reference filter
+        referenceTagFilter.style.display = 'none';
+        referenceTagFilter.value = '';
+    }
+    
+    // Apply the filtering
+    applyBulkTagFilters();
+}
+
+// Apply filters to bulk tag select dropdown
+function applyBulkTagFilters() {
+    const tagTypeFilter = document.getElementById('bulkTagTypeFilter');
+    const referenceTagFilter = document.getElementById('bulkReferenceTagFilter');
+    const tagSelect = document.getElementById('bulkTagSelect');
+    const selectedType = tagTypeFilter.value;
+    const selectedReference = referenceTagFilter.value;
     const allOptions = tagSelect.querySelectorAll('option');
     
     // Show all options first
@@ -664,14 +721,32 @@ function filterBulkTags() {
     if (selectedType) {
         allOptions.forEach(option => {
             const tagType = option.getAttribute('data-tag-type');
-            if (option.value && tagType !== selectedType) {
-                option.style.display = 'none';
+            const refTag = option.getAttribute('data-reference-tag');
+            
+            if (option.value) {
+                let shouldShow = (tagType === selectedType);
+                
+                // Apply reference tag filter if selected
+                if (shouldShow && selectedReference) {
+                    if (selectedReference === 'none') {
+                        shouldShow = !refTag;
+                    } else {
+                        shouldShow = (refTag === selectedReference);
+                    }
+                }
+                
+                option.style.display = shouldShow ? 'block' : 'none';
             }
         });
     }
     
     // Reset the tag selection when filter changes
     tagSelect.value = '';
+}
+
+// Legacy function name for compatibility
+function filterBulkTags() {
+    onBulkTagTypeChange();
 }
 </script>
 {% endblock %}
