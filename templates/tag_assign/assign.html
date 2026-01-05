@@ -246,7 +246,7 @@
         </div>
         <div class="card-body">
             <div class="mt-2" id="quickTagsContainer">            
-                {% for tag in quick_tags|slice:":25" %}
+                {% for tag in quick_tags %}
                 <span class="badge quick-tag" 
                     style="background-color: {{ tag.get_color }}; color: {{ tag.get_text_color }};"
                     data-tag-id="{{ tag.id }}" 
@@ -255,11 +255,9 @@
                     {{ tag.name }}
                 </span>
                 {% endfor %}
-                {% if quick_tags|length > 25 %}
-                <div class="mt-2">
-                    <small class="text-muted">Showing first 25 tags. Use the filter above to narrow down results.</small>
-                </div>
-                {% endif %}
+            </div>
+            <div class="mt-2" id="tagLimitMessage" style="display: none;">
+                <small class="text-muted">Showing first 25 tags. Use search or filters to find more.</small>
             </div>
         </div>
     </div>
@@ -636,6 +634,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (clearBtn) {
         clearBtn.addEventListener('click', clearSearch);
     }
+    
+    // Initialize tag display (show only first 25)
+    const quickTags = document.querySelectorAll('#quickTagsContainer .quick-tag');
+    const tagLimitMessage = document.getElementById('tagLimitMessage');
+    quickTags.forEach((tag, index) => {
+        if (index >= 25) {
+            tag.style.display = 'none';
+        }
+    });
+    if (tagLimitMessage && quickTags.length > 25) {
+        tagLimitMessage.style.display = 'block';
+    }
 });
 
 // Filter quick tags by type (outside DOMContentLoaded to be accessible globally)
@@ -685,20 +695,42 @@ function searchQuickTags() {
         const clearBtn = document.getElementById('clearSearchBtn');
         const searchText = searchInput.value.toLowerCase().trim();
         const quickTags = document.querySelectorAll('#quickTagsContainer .quick-tag');
+        const tagLimitMessage = document.getElementById('tagLimitMessage');
         let visibleCount = 0;
         
         // Show/hide clear button
         clearBtn.style.display = searchText ? 'block' : 'none';
         
-        quickTags.forEach(tag => {
-            const tagName = tag.dataset.tagName.toLowerCase();
-            if (tagName.includes(searchText)) {
-                tag.style.display = '';
-                visibleCount++;
-            } else {
-                tag.style.display = 'none';
+        // If no search text, show only first 25 tags
+        if (!searchText) {
+            quickTags.forEach((tag, index) => {
+                if (index < 25) {
+                    tag.style.display = '';
+                    visibleCount++;
+                } else {
+                    tag.style.display = 'none';
+                }
+            });
+            // Show limit message if there are more than 25 tags
+            if (tagLimitMessage) {
+                tagLimitMessage.style.display = quickTags.length > 25 ? 'block' : 'none';
             }
-        });
+        } else {
+            // Search across all tags
+            quickTags.forEach(tag => {
+                const tagName = tag.dataset.tagName.toLowerCase();
+                if (tagName.includes(searchText)) {
+                    tag.style.display = '';
+                    visibleCount++;
+                } else {
+                    tag.style.display = 'none';
+                }
+            });
+            // Hide limit message when searching
+            if (tagLimitMessage) {
+                tagLimitMessage.style.display = 'none';
+            }
+        }
         
         // Show/hide no results message
         let noResultsMsg = document.getElementById('noResultsMessage');

@@ -132,7 +132,7 @@
                                 <hr>
                                 <!-- Available Tags -->
                                 <div class="mt-2" id="quickTagsContainer">
-                                    {% for tag in quick_tags|slice:":50" %}
+                                    {% for tag in quick_tags %}
                                     <span class="badge quick-tag" 
                                         style="background-color: {{ tag.get_color }}; color: {{ tag.get_text_color }}; cursor: pointer;"
                                         data-tag-id="{{ tag.id }}" 
@@ -141,11 +141,9 @@
                                         {{ tag.name }}
                                     </span>
                                     {% endfor %}
-                                    {% if quick_tags|length > 50 %}
-                                    <div class="mt-2">
-                                        <small class="text-muted">Showing first 50 tags. Use the filter above to narrow down results.</small>
-                                    </div>
-                                    {% endif %}
+                                </div>
+                                <div class="mt-2" id="tagLimitMessage" style="display: none;">
+                                    <small class="text-muted">Showing first 50 tags. Use search or filters to find more.</small>
                                 </div>
                             </div>
                         </div>
@@ -242,20 +240,42 @@ function searchQuickTags() {
         const clearBtn = document.getElementById('clearSearchBtn');
         const searchText = searchInput.value.toLowerCase().trim();
         const quickTags = document.querySelectorAll('#quickTagsContainer .quick-tag');
+        const tagLimitMessage = document.getElementById('tagLimitMessage');
         let visibleCount = 0;
         
         // Show/hide clear button
         clearBtn.style.display = searchText ? 'block' : 'none';
         
-        quickTags.forEach(tag => {
-            const tagName = tag.dataset.tagName.toLowerCase();
-            if (tagName.includes(searchText)) {
-                tag.style.display = '';
-                visibleCount++;
-            } else {
-                tag.style.display = 'none';
+        // If no search text, show only first 50 tags
+        if (!searchText) {
+            quickTags.forEach((tag, index) => {
+                if (index < 50) {
+                    tag.style.display = '';
+                    visibleCount++;
+                } else {
+                    tag.style.display = 'none';
+                }
+            });
+            // Show limit message if there are more than 50 tags
+            if (tagLimitMessage) {
+                tagLimitMessage.style.display = quickTags.length > 50 ? 'block' : 'none';
             }
-        });
+        } else {
+            // Search across all tags
+            quickTags.forEach(tag => {
+                const tagName = tag.dataset.tagName.toLowerCase();
+                if (tagName.includes(searchText)) {
+                    tag.style.display = '';
+                    visibleCount++;
+                } else {
+                    tag.style.display = 'none';
+                }
+            });
+            // Hide limit message when searching
+            if (tagLimitMessage) {
+                tagLimitMessage.style.display = 'none';
+            }
+        }
         
         // Show/hide no results message
         let noResultsMsg = document.getElementById('noResultsMessage');
@@ -396,6 +416,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (clearBtn) {
         clearBtn.addEventListener('click', clearSearch);
+    }
+    
+    // Initialize tag display (show only first 50)
+    const quickTags = document.querySelectorAll('#quickTagsContainer .quick-tag');
+    const tagLimitMessage = document.getElementById('tagLimitMessage');
+    quickTags.forEach((tag, index) => {
+        if (index >= 50) {
+            tag.style.display = 'none';
+        }
+    });
+    if (tagLimitMessage && quickTags.length > 50) {
+        tagLimitMessage.style.display = 'block';
     }
 });
 </script>
