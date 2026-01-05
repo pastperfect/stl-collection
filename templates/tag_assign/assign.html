@@ -201,13 +201,14 @@
 <div class="quick-tags-panel mb-4">
     <div class="card">
         <div class="card-header">
-            <div class="row align-items-center">                <div class="col-md-4">
+            <div class="row align-items-center">
+                <div class="col-md-4">
                     <h5 class="card-title mb-0">
                         <i class="bi bi-lightning"></i> Quick Tags
                     </h5>
                     <small class="text-muted">Click tags to quickly assign to selected entries</small>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <label for="tagTypeFilter" class="form-label mb-1 small">Filter by Type</label>
                     <select class="form-select form-select-sm" id="tagTypeFilter" onchange="filterQuickTags()">
                         <option value="">All Tag Types</option>
@@ -220,7 +221,7 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-4" id="referenceTagFilterContainer" style="{% if not selected_tag_type_obj or not selected_tag_type_obj.reference_tagtype %}display: none;{% endif %}">
+                <div class="col-md-3" id="referenceTagFilterContainer" style="{% if not selected_tag_type_obj or not selected_tag_type_obj.reference_tagtype %}display: none;{% endif %}">
                     <label for="referenceTagFilter" class="form-label mb-1 small">Filter by Reference</label>
                     <select class="form-select form-select-sm" id="referenceTagFilter" onchange="filterQuickTags()">
                         <option value="">All References</option>
@@ -231,6 +232,15 @@
                         </option>
                         {% endfor %}
                     </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="tagSearchInput" class="form-label mb-1 small">Search Tags</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" id="tagSearchInput" placeholder="Type to search..." aria-label="Search tags">
+                        <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn" style="display: none;" aria-label="Clear search">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -614,9 +624,23 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.appendChild(container);
         return container;
     }
+    
+    // Initialize search functionality
+    const searchInput = document.getElementById('tagSearchInput');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', searchQuickTags);
+    }
+    
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearSearch);
+    }
 });
 
 // Filter quick tags by type (outside DOMContentLoaded to be accessible globally)
+let searchTimeout = null;
+
 function filterQuickTags() {
     const tagTypeFilter = document.getElementById('tagTypeFilter');
     const referenceTagFilter = document.getElementById('referenceTagFilter');
@@ -651,6 +675,52 @@ function filterQuickTags() {
     
     // Preserve other filter parameters
     window.location.href = currentUrl.toString();
+}
+
+// Debounced search function for quick tags
+function searchQuickTags() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        const searchInput = document.getElementById('tagSearchInput');
+        const clearBtn = document.getElementById('clearSearchBtn');
+        const searchText = searchInput.value.toLowerCase().trim();
+        const quickTags = document.querySelectorAll('#quickTagsContainer .quick-tag');
+        let visibleCount = 0;
+        
+        // Show/hide clear button
+        clearBtn.style.display = searchText ? 'block' : 'none';
+        
+        quickTags.forEach(tag => {
+            const tagName = tag.dataset.tagName.toLowerCase();
+            if (tagName.includes(searchText)) {
+                tag.style.display = '';
+                visibleCount++;
+            } else {
+                tag.style.display = 'none';
+            }
+        });
+        
+        // Show/hide no results message
+        let noResultsMsg = document.getElementById('noResultsMessage');
+        if (visibleCount === 0 && searchText) {
+            if (!noResultsMsg) {
+                noResultsMsg = document.createElement('div');
+                noResultsMsg.id = 'noResultsMessage';
+                noResultsMsg.className = 'text-muted small mt-2';
+                noResultsMsg.textContent = 'No tags found matching your search.';
+                document.getElementById('quickTagsContainer').appendChild(noResultsMsg);
+            }
+        } else if (noResultsMsg) {
+            noResultsMsg.remove();
+        }
+    }, 200);
+}
+
+// Clear search function
+function clearSearch() {
+    const searchInput = document.getElementById('tagSearchInput');
+    searchInput.value = '';
+    searchQuickTags();
 }
 
 // Handle tag type filter change - updates reference filter and applies filtering

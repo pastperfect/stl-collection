@@ -70,7 +70,7 @@
                         <div class="card">
                             <div class="card-header">
                                 <div class="row align-items-center">
-                                    <div class="col-md-6">
+                                    <div class="col-md-3">
                                         <h6 class="mb-0">
                                             <i class="bi bi-tags"></i> Tags
                                         </h6>
@@ -100,6 +100,15 @@
                                             </option>
                                             {% endfor %}
                                         </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="tagSearchInput" class="form-label mb-1 small">Search Tags</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control" id="tagSearchInput" placeholder="Type to search..." aria-label="Search tags">
+                                            <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn" style="display: none;" aria-label="Clear search">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -192,6 +201,8 @@
 </style>
 
 <script>
+let searchTimeout = null;
+
 function filterQuickTags() {
     const tagTypeFilter = document.getElementById('tagTypeFilter');
     const referenceTagFilter = document.getElementById('referenceTagFilter');
@@ -221,6 +232,52 @@ function filterQuickTags() {
     }
     
     window.location.href = currentUrl.toString();
+}
+
+// Debounced search function for quick tags
+function searchQuickTags() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        const searchInput = document.getElementById('tagSearchInput');
+        const clearBtn = document.getElementById('clearSearchBtn');
+        const searchText = searchInput.value.toLowerCase().trim();
+        const quickTags = document.querySelectorAll('#quickTagsContainer .quick-tag');
+        let visibleCount = 0;
+        
+        // Show/hide clear button
+        clearBtn.style.display = searchText ? 'block' : 'none';
+        
+        quickTags.forEach(tag => {
+            const tagName = tag.dataset.tagName.toLowerCase();
+            if (tagName.includes(searchText)) {
+                tag.style.display = '';
+                visibleCount++;
+            } else {
+                tag.style.display = 'none';
+            }
+        });
+        
+        // Show/hide no results message
+        let noResultsMsg = document.getElementById('noResultsMessage');
+        if (visibleCount === 0 && searchText) {
+            if (!noResultsMsg) {
+                noResultsMsg = document.createElement('div');
+                noResultsMsg.id = 'noResultsMessage';
+                noResultsMsg.className = 'text-muted small mt-2';
+                noResultsMsg.textContent = 'No tags found matching your search.';
+                document.getElementById('quickTagsContainer').appendChild(noResultsMsg);
+            }
+        } else if (noResultsMsg) {
+            noResultsMsg.remove();
+        }
+    }, 200);
+}
+
+// Clear search function
+function clearSearch() {
+    const searchInput = document.getElementById('tagSearchInput');
+    searchInput.value = '';
+    searchQuickTags();
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -327,6 +384,18 @@ document.addEventListener('DOMContentLoaded', function() {
         container.style.zIndex = '1056';
         document.body.appendChild(container);
         return container;
+    }
+    
+    // Initialize search functionality
+    const searchInput = document.getElementById('tagSearchInput');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', searchQuickTags);
+    }
+    
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearSearch);
     }
 });
 </script>
