@@ -29,12 +29,14 @@ def tag_list(request):
             try:
                 tag_type_id = int(tag_type_filter)
                 tags = tags.filter(tag_type_id=tag_type_id)
-                # Get the selected tag type object to check for reference_tagtype
+                # Get the selected tag type object to check for reference_tagtypes
                 selected_tag_type_obj = TagType.objects.filter(id=tag_type_id).first()
                 
-                # If this tag type has a reference_tagtype, get those tags for the filter
-                if selected_tag_type_obj and selected_tag_type_obj.reference_tagtype:
-                    reference_tags = Tag.objects.filter(tag_type=selected_tag_type_obj.reference_tagtype)
+                # If this tag type has reference_tagtypes, get those tags for the filter
+                if selected_tag_type_obj:
+                    reference_tagtypes = selected_tag_type_obj.reference_tagtypes.all()
+                    if reference_tagtypes.exists():
+                        reference_tags = Tag.objects.filter(tag_type__in=reference_tagtypes)
             except (ValueError, TypeError):
                 pass  # Invalid filter value, ignore
     
@@ -43,12 +45,12 @@ def tag_list(request):
     if reference_tag_filter and reference_tag_filter != 'none':
         try:
             reference_tag_id = int(reference_tag_filter)
-            tags = tags.filter(reference_tag_id=reference_tag_id)
+            tags = tags.filter(reference_tags__id=reference_tag_id)
         except (ValueError, TypeError):
             pass  # Invalid filter value, ignore
     elif reference_tag_filter == 'none':
-        # Filter for tags with no reference tag
-        tags = tags.filter(reference_tag__isnull=True)
+        # Filter for tags with no reference tags
+        tags = tags.filter(reference_tags__isnull=True)
     
     return render(request, 'tags/list.html', {
         'tags': tags,
@@ -194,23 +196,30 @@ def delete_tagtype(request, tagtype_id):
 
 @staff_member_required
 def get_reference_tags(request, tagtype_id):
-    """API endpoint to get available reference tags for a given tag type"""
+    """API endpoint to get available reference tags for a given tag type, grouped by reference tag type"""
     tagtype = get_object_or_404(TagType, id=tagtype_id)
     
-    # Check if this tag type has a reference_tagtype configured
-    if not tagtype.reference_tagtype:
+    # Check if this tag type has reference_tagtypes configured
+    reference_tagtypes = tagtype.reference_tagtypes.all()
+    if not reference_tagtypes.exists():
         return JsonResponse({
             'has_reference': False,
-            'tags': []
+            'reference_tagtypes': []
         })
     
-    # Get all tags of the reference_tagtype
-    reference_tags = Tag.objects.filter(tag_type=tagtype.reference_tagtype).values('id', 'name')
+    # Group tags by their tag types
+    reference_data = []
+    for ref_tagtype in reference_tagtypes:
+        tags = Tag.objects.filter(tag_type=ref_tagtype).values('id', 'name')
+        reference_data.append({
+            'id': ref_tagtype.id,
+            'name': ref_tagtype.name,
+            'tags': list(tags)
+        })
     
     return JsonResponse({
         'has_reference': True,
-        'reference_tagtype_name': tagtype.reference_tagtype.name,
-        'tags': list(reference_tags)
+        'reference_tagtypes': reference_data
     })
 
 @staff_member_required
@@ -260,6 +269,37 @@ def toggle_upload_visibility(request, tagtype_id):
         
         tagtype.set_at_upload = set_at_upload
         tagtype.save()
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@staff_member_required
+def get_available_references(request, tagtype_id):
+    """API endpoint to get available tag types for reference selection"""
+    try:
+        tagtype = get_object_or_404(TagType, id=tagtype_id)
+        # Get all tag types except the current one
+        available_types = TagType.objects.exclude(id=tagtype_id).values('id', 'name', 'color')
+        
+        return JsonResponse({
+            'success': True,
+            'tag_types': list(available_types)
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@staff_member_required
+@require_POST
+def update_references(request, tagtype_id):
+    """API endpoint to update reference tag types for a tag type"""
+    try:
+        tagtype = get_object_or_404(TagType, id=tagtype_id)
+        data = json.loads(request.body)
+        reference_ids = data.get('reference_tagtype_ids', [])
+        
+        # Clear existing references and set new ones
+        tagtype.reference_tagtypes.set(reference_ids)
         
         return JsonResponse({'success': True})
     except Exception as e:

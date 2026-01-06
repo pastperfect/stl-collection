@@ -169,7 +169,7 @@
                         <select class="form-select form-select-sm me-2" id="bulkTagTypeFilter" style="max-width: 150px;" onchange="onBulkTagTypeChange()">
                             <option value="">All Types</option>
                             {% for tag_type in tag_types %}
-                            <option value="{{ tag_type.id }}" data-has-reference="{% if tag_type.reference_tagtype %}true{% else %}false{% endif %}">{{ tag_type.name }}</option>
+                            <option value="{{ tag_type.id }}" data-has-reference="{% if tag_type.reference_tagtypes.exists %}true{% else %}false{% endif %}">{{ tag_type.name }}</option>
                             {% endfor %}
                         </select>
                         <select class="form-select form-select-sm me-2" id="bulkReferenceTagFilter" style="max-width: 150px; display: none;" onchange="applyBulkTagFilters()">

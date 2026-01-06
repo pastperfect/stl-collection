@@ -278,12 +278,12 @@
                                             multiple 
                                             size="5"
                                             data-tagtype-id="{{ tag_type.id }}"
-                                            data-reference-tagtype-id="{% if tag_type.reference_tagtype %}{{ tag_type.reference_tagtype.id }}{% endif %}">
+                                            data-reference-tagtype-ids="{% for ref_type in tag_type.reference_tagtypes.all %}{{ ref_type.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
                                             {% for tag in tag_type.tags.all %}
                                                 <option 
                                                     value="{{ tag.id }}"
                                                     data-tag-id="{{ tag.id }}"
-                                                    data-reference-tag-id="{% if tag.reference_tag %}{{ tag.reference_tag.id }}{% endif %}">
+                                                    data-reference-tag-ids="{% for ref_tag in tag.reference_tags.all %}{{ ref_tag.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
                                                     {{ tag.name }}
                                                 </option>
                                             {% endfor %}
@@ -574,46 +574,97 @@ document.addEventListener('DOMContentLoaded', function() {
     function initializeTagFiltering() {
         const tagSelects = document.querySelectorAll('.tag-multiselect');
         
-        // Set up event listeners for filtering
+        // Function to filter all dependent selects based on ALL selected reference tags
+        function filterDependentSelects() {
+            tagSelects.forEach(dependentSelect => {
+                const refTagTypeIds = dependentSelect.getAttribute('data-reference-tagtype-ids');
+                if (!refTagTypeIds || refTagTypeIds.trim() === '') return; // No references, skip
+                
+                const refTagTypeIdArray = refTagTypeIds.split(',').filter(id => id.trim());
+                
+                // Collect selected tags grouped by their tag type
+                const selectedByType = {};
+                tagSelects.forEach(select => {
+                    const tagTypeId = select.getAttribute('data-tagtype-id');
+                    if (refTagTypeIdArray.includes(tagTypeId)) {
+                        // This is a reference tag type, collect selected tags
+                        const selectedIds = Array.from(select.selectedOptions)
+                            .map(opt => opt.getAttribute('data-tag-id'))
+                            .filter(id => id);
+                        if (selectedIds.length > 0) {
+                            selectedByType[tagTypeId] = selectedIds;
+                        }
+                    }
+                });
+                
+                const hasAnySelection = Object.keys(selectedByType).length > 0;
+                
+                // Filter options in dependent select
+                const allOptions = Array.from(dependentSelect.options);
+                
+                if (!hasAnySelection) {
+                    // No reference tags selected - show all options
+                    allOptions.forEach(option => {
+                        option.style.display = '';
+                        option.disabled = false;
+                    });
+                } else {
+                    // Filter based on reference tags - option must satisfy ALL tag type selections
+                    allOptions.forEach(option => {
+                        const optionRefTagIds = option.getAttribute('data-reference-tag-ids');
+                        
+                        if (!optionRefTagIds || optionRefTagIds.trim() === '') {
+                            // Option has no reference tags - hide it when filtering is active
+                            option.style.display = 'none';
+                            option.disabled = true;
+                            option.selected = false;
+                        } else {
+                            const optionRefTagIdArray = optionRefTagIds.split(',').map(id => id.trim());
+                            
+                            // Check if option satisfies ALL tag type selections
+                            // For each tag type that has selections, the option must have at least one match
+                            let matchesAll = true;
+                            for (const [tagTypeId, selectedIds] of Object.entries(selectedByType)) {
+                                const hasMatchForThisType = selectedIds.some(selectedId => 
+                                    optionRefTagIdArray.includes(selectedId)
+                                );
+                                if (!hasMatchForThisType) {
+                                    matchesAll = false;
+                                    break;
+                                }
+                            }
+                            
+                            if (matchesAll) {
+                                option.style.display = '';
+                                option.disabled = false;
+                            } else {
+                                option.style.display = 'none';
+                                option.disabled = true;
+                                option.selected = false;
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Set up event listeners - ANY tag type that is a reference for others should trigger filtering
         tagSelects.forEach(select => {
             const tagTypeId = select.getAttribute('data-tagtype-id');
             
-            // Check if any other tag type references this one
-            const dependentSelects = document.querySelectorAll(`[data-reference-tagtype-id="${tagTypeId}"]`);
+            // Check if ANY other tag type references this one
+            let isReferenced = false;
+            tagSelects.forEach(otherSelect => {
+                if (otherSelect === select) return;
+                const refTagTypeIds = otherSelect.getAttribute('data-reference-tagtype-ids');
+                if (refTagTypeIds && refTagTypeIds.split(',').includes(tagTypeId)) {
+                    isReferenced = true;
+                }
+            });
             
-            if (dependentSelects.length > 0) {
+            if (isReferenced) {
                 // This tag type is referenced by others, set up filtering
-                select.addEventListener('change', function() {
-                    const selectedReferenceTagIds = Array.from(this.selectedOptions).map(opt => opt.getAttribute('data-tag-id'));
-                    
-                    // Filter dependent selects
-                    dependentSelects.forEach(dependentSelect => {
-                        const allOptions = Array.from(dependentSelect.options);
-                        
-                        if (selectedReferenceTagIds.length === 0) {
-                            // No filter - show all options
-                            allOptions.forEach(option => {
-                                option.style.display = '';
-                                option.disabled = false;
-                            });
-                        } else {
-                            // Filter based on reference tags
-                            allOptions.forEach(option => {
-                                const referenceTagId = option.getAttribute('data-reference-tag-id');
-                                
-                                if (!referenceTagId || selectedReferenceTagIds.includes(referenceTagId)) {
-                                    option.style.display = '';
-                                    option.disabled = false;
-                                } else {
-                                    option.style.display = 'none';
-                                    option.disabled = true;
-                                    // Deselect if currently selected
-                                    option.selected = false;
-                                }
-                            });
-                        }
-                    });
-                });
+                select.addEventListener('change', filterDependentSelects);
             }
         });
     }

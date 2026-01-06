@@ -89,13 +89,13 @@ def assign_tags(request):
             tag_type_id = int(tag_type_filter)
             quick_tags = quick_tags.filter(tag_type_id=tag_type_id)
             
-            # Get the selected tag type object to check for reference_tagtype
+            # Get the selected tag type object to check for reference_tagtypes
             selected_tag_type_obj = TagType.objects.filter(id=tag_type_id).first()
             
-            # If this tag type has a reference_tagtype, get those tags for the filter
-            if selected_tag_type_obj and selected_tag_type_obj.reference_tagtype:
+            # If this tag type has reference_tagtypes, get those tags for the filter
+            if selected_tag_type_obj and selected_tag_type_obj.reference_tagtypes.exists():
                 reference_tags = Tag.objects.filter(
-                    tag_type=selected_tag_type_obj.reference_tagtype
+                    tag_type__in=selected_tag_type_obj.reference_tagtypes.all()
                 ).order_by('name')
         except (ValueError, TypeError):
             # If conversion fails, show all tags
@@ -104,11 +104,11 @@ def assign_tags(request):
     # Apply reference tag filter if provided
     if reference_tag_filter and tag_type_filter:
         if reference_tag_filter == 'none':
-            quick_tags = quick_tags.filter(reference_tag__isnull=True)
+            quick_tags = quick_tags.filter(reference_tags__isnull=True)
         else:
             try:
                 reference_tag_id = int(reference_tag_filter)
-                quick_tags = quick_tags.filter(reference_tag_id=reference_tag_id)
+                quick_tags = quick_tags.filter(reference_tags__id=reference_tag_id)
             except (ValueError, TypeError):
                 pass
     
@@ -158,7 +158,7 @@ def bulk_assign_tags(request):
             return JsonResponse({'success': False, 'error': 'Missing entry IDs or tag IDs'})
         
         entries = Entry.objects.filter(id__in=entry_ids)
-        tags = Tag.objects.filter(id__in=tag_ids).select_related('reference_tag')
+        tags = Tag.objects.filter(id__in=tag_ids).select_related('tag_type').prefetch_related('reference_tags')
         
         affected_count = 0
         auto_assigned_count = 0
@@ -169,9 +169,9 @@ def bulk_assign_tags(request):
                     entry.tags.add(tag)
                     affected_count += 1
                     
-                    # Auto-assign reference tag if configured
-                    if tag.reference_tag:
-                        entry.tags.add(tag.reference_tag)
+                    # Auto-assign reference tags if configured
+                    for ref_tag in tag.reference_tags.all():
+                        entry.tags.add(ref_tag)
                         auto_assigned_count += 1
             elif action == 'remove':
                 for tag in tags:

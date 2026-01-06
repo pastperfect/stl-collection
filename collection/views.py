@@ -159,7 +159,7 @@ def edit_image(request, image_id):
     
     # Get tag types and all tags for quick tags section
     tag_types = TagType.objects.filter(is_active=True, show_in_gallery=True).order_by('sort_order', 'name')
-    all_tags = Tag.objects.select_related('tag_type', 'reference_tag').all()
+    all_tags = Tag.objects.select_related('tag_type').prefetch_related('reference_tags').all()
     
     # Handle quick tags filtering
     tag_type_filter = request.GET.get('tag_type', '')
@@ -178,21 +178,21 @@ def edit_image(request, image_id):
             pass
     
     # Filter by reference tag
-    if selected_tag_type_obj and selected_tag_type_obj.reference_tagtype:
+    if selected_tag_type_obj and selected_tag_type_obj.reference_tagtypes.exists():
         if reference_tag_filter == 'none':
-            quick_tags = quick_tags.filter(reference_tag__isnull=True)
+            quick_tags = quick_tags.filter(reference_tags__isnull=True)
         elif reference_tag_filter:
             try:
                 reference_tag_id = int(reference_tag_filter)
-                quick_tags = quick_tags.filter(reference_tag_id=reference_tag_id)
+                quick_tags = quick_tags.filter(reference_tags__id=reference_tag_id)
             except ValueError:
                 pass
     
     # Get reference tags for the filter
     reference_tags = []
-    if selected_tag_type_obj and selected_tag_type_obj.reference_tagtype:
+    if selected_tag_type_obj and selected_tag_type_obj.reference_tagtypes.exists():
         reference_tags = Tag.objects.filter(
-            tag_type=selected_tag_type_obj.reference_tagtype
+            tag_type__in=selected_tag_type_obj.reference_tagtypes.all()
         ).order_by('name')
     
     return render(request, 'collection/edit.html', {

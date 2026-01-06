@@ -133,18 +133,18 @@ tbody.sortable tr {
                                 <div class="col-md-3">
                                     <label for="tagTypeFilter" class="form-label">Filter by Tag Type</label>
                                     <select name="tag_type" id="tagTypeFilter" class="form-select">
-                                        <option value="">All Types</option>
+                                        <option value="" >All Types</option>
                                         <option value="none" {% if selected_tag_type == 'none' %}selected{% endif %}>No Type</option>
                                         {% for tag_type in tag_types %}
                                             <option value="{{ tag_type.id }}" 
-                                                    data-has-reference="{% if tag_type.reference_tagtype %}true{% else %}false{% endif %}"
+                                                    data-has-reference="{% if tag_type.reference_tagtypes.exists %}true{% else %}false{% endif %}"
                                                     {% if selected_tag_type == tag_type.id|stringformat:"s" %}selected{% endif %}>
                                                 {{ tag_type.name }}
                                             </option>
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-md-3" id="referenceTagFilterContainer" style="{% if not selected_tag_type_obj or not selected_tag_type_obj.reference_tagtype %}display: none;{% endif %}">
+                                <div class="col-md-3" id="referenceTagFilterContainer" style="{% if not selected_tag_type_obj or not reference_tags %}display: none;{% endif %}">
                                     <label for="referenceTagFilter" class="form-label">Filter by Reference Tag</label>
                                     <select name="reference_tag" id="referenceTagFilter" class="form-select">
                                         <option value="">All References</option>
@@ -244,10 +244,12 @@ tbody.sortable tr {
                                                     {% endif %}
                                                 </td>
                                                 <td>
-                                                    {% if tag.reference_tag %}
-                                                        <span class="badge" style="background-color: {{ tag.reference_tag.get_color }}; color: {{ tag.reference_tag.get_text_color }};">
-                                                            {{ tag.reference_tag.name }}
-                                                        </span>
+                                                    {% if tag.reference_tags.exists %}
+                                                        {% for ref_tag in tag.reference_tags.all %}
+                                                            <span class="badge" style="background-color: {{ ref_tag.get_color }}; color: {{ ref_tag.get_text_color }};">
+                                                                {{ ref_tag.name }}
+                                                            </span>
+                                                        {% endfor %}
                                                     {% else %}
                                                         <span class="text-muted">-</span>
                                                     {% endif %}
@@ -319,7 +321,7 @@ tbody.sortable tr {
                                                 <th style="width: 40px;"></th>
                                                 <th>Name</th>
                                                 <th>Color</th>
-                                                <th>Reference Tag Type</th>
+                                                <th>Reference Tag Types</th>
                                                 <th>Sort Order</th>
                                                 <th>Show in Gallery</th>
                                                 <th>Set at Upload</th>
@@ -345,11 +347,23 @@ tbody.sortable tr {
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    {% if tagtype.reference_tagtype %}
-                                                        <span class="badge bg-secondary">{{ tagtype.reference_tagtype.name }}</span>
-                                                    {% else %}
-                                                        <span class="text-muted">None</span>
-                                                    {% endif %}
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div class="flex-grow-1">
+                                                            {% if tagtype.reference_tagtypes.exists %}
+                                                                {% for ref_type in tagtype.reference_tagtypes.all %}
+                                                                    <span class="badge bg-secondary me-1">{{ ref_type.name }}</span>
+                                                                {% endfor %}
+                                                            {% else %}
+                                                                <span class="text-muted">None</span>
+                                                            {% endif %}
+                                                        </div>
+                                                        <button type="button" 
+                                                                class="btn btn-sm btn-outline-secondary" 
+                                                                onclick="openReferenceModal({{ tagtype.id }}, '{{ tagtype.name|escapejs }}', [{% for ref_type in tagtype.reference_tagtypes.all %}{{ ref_type.id }}{% if not forloop.last %},{% endif %}{% endfor %}])"
+                                                                title="Quick Edit">
+                                                            <i class="bi bi-pencil-square"></i>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                                 <td>{{ tagtype.sort_order }}</td>
                                                 <td class="text-center">
@@ -393,6 +407,28 @@ tbody.sortable tr {
                     {% endif %}
                 </div>
             {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Reference Tag Types Modal -->
+<div class="modal fade" id="referenceModal" tabindex="-1" aria-labelledby="referenceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="referenceModalLabel">Edit Reference Tag Types</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Select which tag types can be referenced by <strong id="modalTagTypeName"></strong>:</p>
+                <div id="referenceCheckboxes" class="list-group">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveReferences()">Save Changes</button>
+            </div>
         </div>
     </div>
 </div>
@@ -497,6 +533,87 @@ function toggleUploadVisibility(tagTypeId, isEnabled) {
         alert('Failed to update upload visibility');
         // Revert checkbox state
         event.target.checked = !isEnabled;
+    });
+}
+
+let currentEditingTagTypeId = null;
+
+function openReferenceModal(tagTypeId, tagTypeName, currentReferences) {
+    currentEditingTagTypeId = tagTypeId;
+    document.getElementById('modalTagTypeName').textContent = tagTypeName;
+    
+    // Get all available tag types
+    const checkboxContainer = document.getElementById('referenceCheckboxes');
+    checkboxContainer.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> Loading...</div>';
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('referenceModal'));
+    modal.show();
+    
+    // Fetch available tag types
+    fetch('/tags/api/tagtype/available-references/' + tagTypeId + '/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                checkboxContainer.innerHTML = '';
+                
+                if (data.tag_types.length === 0) {
+                    checkboxContainer.innerHTML = '<div class="alert alert-info">No other tag types available.</div>';
+                    return;
+                }
+                
+                data.tag_types.forEach(tagType => {
+                    const isChecked = currentReferences.includes(tagType.id);
+                    const item = document.createElement('label');
+                    item.className = 'list-group-item d-flex align-items-center';
+                    item.innerHTML = `
+                        <input class="form-check-input me-2" type="checkbox" value="${tagType.id}" ${isChecked ? 'checked' : ''}>
+                        <div class="d-flex align-items-center gap-2 flex-grow-1">
+                            <span class="color-preview" style="background-color: ${tagType.color}; width: 16px; height: 16px; border-radius: 3px; border: 1px solid #dee2e6;"></span>
+                            <span>${tagType.name}</span>
+                        </div>
+                    `;
+                    checkboxContainer.appendChild(item);
+                });
+            } else {
+                checkboxContainer.innerHTML = '<div class="alert alert-danger">Failed to load tag types.</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            checkboxContainer.innerHTML = '<div class="alert alert-danger">Error loading tag types.</div>';
+        });
+}
+
+function saveReferences() {
+    const checkboxes = document.querySelectorAll('#referenceCheckboxes input[type="checkbox"]');
+    const selectedIds = Array.from(checkboxes)
+        .filter(cb => cb.checked)
+        .map(cb => parseInt(cb.value));
+    
+    // Save via AJAX
+    fetch(`/tags/api/tagtype/${currentEditingTagTypeId}/update-references/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ reference_tagtype_ids: selectedIds })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('referenceModal')).hide();
+            // Reload page to show updated references
+            location.reload();
+        } else {
+            alert('Failed to update references: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update references');
     });
 }
 </script>
