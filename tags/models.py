@@ -16,6 +16,7 @@ class TagType(models.Model):
     sort_order = models.PositiveIntegerField(default=0, help_text="Lower numbers appear first")
     is_active = models.BooleanField(default=True, help_text="Inactive types won't appear in filters")
     show_in_gallery = models.BooleanField(default=True, help_text="Show this tag type in the Collection Gallery filters")
+    set_at_upload = models.BooleanField(default=False, help_text="Show tags of this type during image upload")
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

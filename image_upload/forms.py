@@ -17,6 +17,19 @@ class EntryUploadForm(forms.ModelForm):
         required=False
     )
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter to only tags from TagTypes with set_at_upload=True
+        from tags.models import TagType
+        self.fields['tags'].queryset = Tag.objects.filter(
+            tag_type__set_at_upload=True,
+            tag_type__is_active=True
+        ).select_related('tag_type').order_by(
+            'tag_type__sort_order',
+            'tag_type__name',
+            'name'
+        )
+    
     class Meta:
         model = Entry
         fields = ['name', 'publisher', 'range', 'folder_location', 'notes', 'tags']

@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from .forms import EntryUploadForm
 from .models import Entry, Image
+from tags.models import TagType
 import os
 import re
 import uuid
@@ -84,9 +85,23 @@ def upload_image(request):
     # Get the last uploaded entry for auto-fill functionality
     last_entry = Entry.objects.order_by('-upload_date').first()
     
+    # Get TagTypes with set_at_upload=True for grouped display
+    upload_tag_types = TagType.objects.filter(
+        set_at_upload=True,
+        is_active=True
+    ).prefetch_related('tags').order_by('sort_order', 'name')
+    
+    # Get tags from last entry for copy functionality
+    last_entry_tags = []
+    if last_entry:
+        last_entry_tags = list(last_entry.tags.values_list('id', flat=True))
+    
     return render(request, 'image_upload/upload.html', {
         'form': form,
-        'last_image': last_entry  # Keep variable name for template compatibility
+        'last_image': last_entry,  # Keep variable name for template compatibility
+        'upload_tag_types': upload_tag_types,
+        'has_upload_tags': upload_tag_types.exists(),
+        'last_entry_tags': last_entry_tags
     })
 
 

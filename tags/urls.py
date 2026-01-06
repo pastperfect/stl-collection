@@ -17,4 +17,5 @@ urlpatterns = [
     path('api/reference-tags/<int:tagtype_id>/', views.get_reference_tags, name='api_reference_tags'),
     path('api/tagtype/update-order/', views.update_tagtype_order, name='update_tagtype_order'),
     path('api/tagtype/<int:tagtype_id>/toggle-gallery/', views.toggle_gallery_visibility, name='toggle_gallery_visibility'),
+    path('api/tagtype/<int:tagtype_id>/toggle-upload/', views.toggle_upload_visibility, name='toggle_upload_visibility'),
 ]

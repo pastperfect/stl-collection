@@ -248,3 +248,19 @@ def toggle_gallery_visibility(request, tagtype_id):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+@staff_member_required
+@require_POST
+def toggle_upload_visibility(request, tagtype_id):
+    """API endpoint to toggle tag type visibility in upload form"""
+    try:
+        tagtype = get_object_or_404(TagType, id=tagtype_id)
+        data = json.loads(request.body)
+        set_at_upload = data.get('set_at_upload', False)
+        
+        tagtype.set_at_upload = set_at_upload
+        tagtype.save()
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

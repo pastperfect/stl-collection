@@ -6,11 +6,11 @@ from .widgets import ColorPickerWidget
 
 @admin.register(TagType)
 class TagTypeAdmin(ModelAdmin):
-    list_display = ['name', 'color_preview', 'reference_tagtype', 'sort_order', 'is_active', 'tag_count', 'created_at']
+    list_display = ['name', 'color_preview', 'reference_tagtype', 'sort_order', 'is_active', 'show_in_gallery', 'set_at_upload', 'tag_count', 'created_at']
     list_filter = ['is_active', 'created_at', 'reference_tagtype']
     search_fields = ['name', 'description']
     ordering = ['sort_order', 'name']
-    list_editable = ['sort_order', 'is_active']
+    list_editable = ['sort_order', 'is_active', 'show_in_gallery', 'set_at_upload']
     
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
