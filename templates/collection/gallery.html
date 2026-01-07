@@ -70,13 +70,11 @@
                         id="tag_type_{{ tag_type.id }}" 
                         name="tag_type_{{ tag_type.id }}"
                         data-tag-type-id="{{ tag_type.id }}"
-                        data-reference-type-id="{% if tag_type.reference_tagtype %}{{ tag_type.reference_tagtype.id }}{% endif %}"
                         onchange="handleTagTypeChange(this)">
                     <option value="">All</option>
                     {% for tag in all_tags %}
                         {% if tag.tag_type.id == tag_type.id %}
                         <option value="{{ tag.id }}" 
-                                data-reference-tag-id="{% if tag.reference_tag %}{{ tag.reference_tag.id }}{% endif %}"
                                 {% if tag.id|stringformat:"s" in tag_filter %}selected{% endif %}>
                             {{ tag.name }}
                         </option>

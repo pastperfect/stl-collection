@@ -179,7 +179,7 @@
                         <select class="form-select form-select-sm me-2" id="bulkTagSelect" style="max-width: 200px;">
                             <option value="">Select tags...</option>
                             {% for tag in all_tags %}
-                            <option value="{{ tag.id }}" data-tag-type="{{ tag.tag_type.id|default:'' }}" data-reference-tag="{{ tag.reference_tag.id|default:'' }}">{{ tag.name }}</option>
+                            <option value="{{ tag.id }}" data-tag-type="{{ tag.tag_type.id|default:'' }}">{{ tag.name }}</option>
                             {% endfor %}
                         </select>
                         <div class="btn-group" role="group">
@@ -214,14 +214,14 @@
                         <option value="">All Tag Types</option>
                         {% for tag_type in tag_types %}
                         <option value="{{ tag_type.id }}" 
-                                data-has-reference="{% if tag_type.reference_tagtype %}true{% else %}false{% endif %}"
+                                data-has-reference="{% if tag_type.reference_tagtypes.exists %}true{% else %}false{% endif %}"
                                 {% if tag_type.id|stringformat:"s" == tag_type_filter %}selected{% endif %}>
                             {{ tag_type.name }}
                         </option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-3" id="referenceTagFilterContainer" style="{% if not selected_tag_type_obj or not selected_tag_type_obj.reference_tagtype %}display: none;{% endif %}">
+                <div class="col-md-3" id="referenceTagFilterContainer" style="{% if not selected_tag_type_obj or not selected_tag_type_obj.reference_tagtypes.exists %}display: none;{% endif %}">
                     <label for="referenceTagFilter" class="form-label mb-1 small">Filter by Reference</label>
                     <select class="form-select form-select-sm" id="referenceTagFilter" onchange="filterQuickTags()">
                         <option value="">All References</option>

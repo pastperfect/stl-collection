@@ -217,16 +217,16 @@ def quick_tag_assign(request):
             else:
                 entry.tags.add(tag)
                 assigned = True
-                # Auto-assign reference tag if configured
-                if tag.reference_tag:
-                    entry.tags.add(tag.reference_tag)
+                # Auto-assign reference tags if configured
+                if tag.reference_tags.exists():
+                    entry.tags.add(*tag.reference_tags.all())
                     auto_assigned = True
         elif action == 'add':
             entry.tags.add(tag)
             assigned = True
-            # Auto-assign reference tag if configured
-            if tag.reference_tag:
-                entry.tags.add(tag.reference_tag)
+            # Auto-assign reference tags if configured
+            if tag.reference_tags.exists():
+                entry.tags.add(*tag.reference_tags.all())
                 auto_assigned = True
         elif action == 'remove':
             entry.tags.remove(tag)
