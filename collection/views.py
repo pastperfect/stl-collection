@@ -93,6 +93,13 @@ def gallery(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    # Build query string for pagination (exclude 'page' parameter)
+    query_params = []
+    for key, value in request.GET.items():
+        if key != 'page' and value:
+            query_params.append(f'{key}={value}')
+    query_string = '&'.join(query_params)
+    
     return render(request, 'collection/gallery.html', {
         'page_obj': page_obj,
         'search_query': search_query,
@@ -104,6 +111,7 @@ def gallery(request):
         'ranges': ranges,
         'all_tags': all_tags,
         'tag_types': tag_types,
+        'query_string': query_string,
     })
 
 @staff_member_required

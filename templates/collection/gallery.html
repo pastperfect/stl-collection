@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load collection_filters %}
 
 {% block title %}Collection Gallery - STL Collection{% endblock %}
 
@@ -247,12 +248,12 @@ document.addEventListener('DOMContentLoaded', function() {
     <ul class="pagination">
         {% if page_obj.has_previous %}
         <li class="page-item">
-            <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.publisher %}&publisher={{ request.GET.publisher }}{% endif %}{% if request.GET.range %}&range={{ request.GET.range }}{% endif %}{% for tag in request.GET.tags %}&tags={{ tag }}{% endfor %}">
+            <a class="page-link" href="?page=1{% if query_string %}&{{ query_string }}{% endif %}">
                 <i class="bi bi-chevron-double-left"></i>
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.publisher %}&publisher={{ request.GET.publisher }}{% endif %}{% if request.GET.range %}&range={{ request.GET.range }}{% endif %}{% for tag in request.GET.tags %}&tags={{ tag }}{% endfor %}">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}">
                 <i class="bi bi-chevron-left"></i>
             </a>
         </li>
@@ -265,19 +266,19 @@ document.addEventListener('DOMContentLoaded', function() {
         </li>
         {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.publisher %}&publisher={{ request.GET.publisher }}{% endif %}{% if request.GET.range %}&range={{ request.GET.range }}{% endif %}{% for tag in request.GET.tags %}&tags={{ tag }}{% endfor %}">{{ num }}</a>
+            <a class="page-link" href="?page={{ num }}{% if query_string %}&{{ query_string }}{% endif %}">{{ num }}</a>
         </li>
         {% endif %}
         {% endfor %}
 
         {% if page_obj.has_next %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.publisher %}&publisher={{ request.GET.publisher }}{% endif %}{% if request.GET.range %}&range={{ request.GET.range }}{% endif %}{% for tag in request.GET.tags %}&tags={{ tag }}{% endfor %}">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}">
                 <i class="bi bi-chevron-right"></i>
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.publisher %}&publisher={{ request.GET.publisher }}{% endif %}{% if request.GET.range %}&range={{ request.GET.range }}{% endif %}{% for tag in request.GET.tags %}&tags={{ tag }}{% endfor %}">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if query_string %}&{{ query_string }}{% endif %}">
                 <i class="bi bi-chevron-double-right"></i>
             </a>
         </li>

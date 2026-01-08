@@ -15,3 +15,14 @@ def dict_item(dictionary, key):
     if not isinstance(dictionary, dict):
         return None
     return dictionary.get(key)
+
+
+@register.filter
+def get_param(query_dict, param_name):
+    """
+    Get a parameter from a QueryDict
+    Usage: {{ request.GET|get_param:'tag_type_1' }}
+    """
+    if hasattr(query_dict, 'get'):
+        return query_dict.get(param_name, '')
+    return ''
