@@ -62,3 +62,9 @@ local_settings.py
 # Temporary files
 tmp/
 temp/
+
+# Manual Scripts
+Manual Scripts/test_bulk_import
+*/*.csv
+
+
