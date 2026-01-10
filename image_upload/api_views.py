@@ -327,10 +327,9 @@ def api_upload_image(request):
             is_primary=is_primary
         )
         
-        # Read file content and save with new name
+        # Save file (this will also save the model because save=True)
         file_content = uploaded_file.read()
-        image.image.save(new_filename, ContentFile(file_content), save=False)
-        image.save()
+        image.image.save(new_filename, ContentFile(file_content), save=True)
         
         return JsonResponse({
             'success': True,

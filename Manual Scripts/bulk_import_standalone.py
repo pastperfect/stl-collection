@@ -202,9 +202,9 @@ class STLCollectionImporter:
                 # Check for image files
                 image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.gif',
                                   '*.JPG', '*.JPEG', '*.PNG', '*.GIF']
-                image_files = []
+                image_files = set()
                 for ext in image_extensions:
-                    image_files.extend(folder.glob(ext))
+                    image_files.update(folder.glob(ext))
                 
                 if not image_files:
                     errors.append(f'No image files found in: {folder_path}')
@@ -235,12 +235,12 @@ class STLCollectionImporter:
         folder = Path(folder_path)
         image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.gif',
                           '*.JPG', '*.JPEG', '*.PNG', '*.GIF']
-        image_files = []
+        image_files = set()  # Use set to avoid duplicates on case-insensitive filesystems
         for ext in image_extensions:
-            image_files.extend(folder.glob(ext))
+            image_files.update(folder.glob(ext))
         
         # Sort alphabetically
-        image_files = sorted(image_files)
+        image_files = sorted(list(image_files))
         
         uploaded_count = 0
         failed_count = 0
