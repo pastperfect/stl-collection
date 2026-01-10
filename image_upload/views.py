@@ -165,7 +165,7 @@ def add_images_to_entry(request, entry_id):
 @staff_member_required
 @require_POST
 def set_primary_image(request, entry_id, image_id):
-    """AJAX endpoint to set an image as primary for an entry"""
+    """Set an image as primary for an entry"""
     entry = get_object_or_404(Entry, id=entry_id)
     image = get_object_or_404(Image, id=image_id, entry=entry)
     
@@ -176,26 +176,38 @@ def set_primary_image(request, entry_id, image_id):
     image.is_primary = True
     image.save()
     
-    return JsonResponse({
-        'success': True,
-        'image_id': image.id
-    })
+    # Check if this is an AJAX request
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'image_id': image.id
+        })
+    
+    # Regular form submission - redirect back to detail page
+    from django.shortcuts import redirect
+    return redirect('image_details:detail', entry_id=entry_id)
 
 
 @staff_member_required
 @require_POST
 def delete_image(request, entry_id, image_id):
-    """AJAX endpoint to delete an image from an entry"""
+    """Delete an image from an entry"""
     entry = get_object_or_404(Entry, id=entry_id)
     image = get_object_or_404(Image, id=image_id, entry=entry)
     
     # Check if this is the only image
     image_count = entry.images.count()
     if image_count == 1:
-        return JsonResponse({
-            'success': False,
-            'error': 'Cannot delete the only image in an entry'
-        }, status=400)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'error': 'Cannot delete the only image in an entry'
+            }, status=400)
+        else:
+            from django.contrib import messages
+            messages.error(request, 'Cannot delete the only image in an entry')
+            from django.shortcuts import redirect
+            return redirect('image_details:detail', entry_id=entry_id)
     
     was_primary = image.is_primary
     
@@ -205,16 +217,25 @@ def delete_image(request, entry_id, image_id):
     image.delete()
     
     # If we deleted the primary image, auto-promote the next oldest
+    new_primary_id = None
     if was_primary:
         next_image = entry.images.order_by('upload_date').first()
         if next_image:
             next_image.is_primary = True
             next_image.save()
-            return JsonResponse({
-                'success': True,
-                'deleted_id': image_id,
-                'new_primary_id': next_image.id
-            })
+            new_primary_id = next_image.id
+    
+    # Check if this is an AJAX request
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'deleted_id': image_id,
+            'new_primary_id': new_primary_id
+        })
+    
+    # Regular form submission - redirect back to detail page
+    from django.shortcuts import redirect
+    return redirect('image_details:detail', entry_id=entry_id)
     
     return JsonResponse({
         'success': True,
