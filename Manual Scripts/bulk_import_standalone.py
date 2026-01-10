@@ -58,6 +58,23 @@ class STLCollectionImporter:
             print(f"✗ Error: {e}")
             return False
     
+    def get_existing_tags(self) -> Dict[str, List[str]]:
+        """Fetch all existing tags from server grouped by tag type"""
+        try:
+            response = self.session.get(
+                f'{self.base_url}/upload/api/get-tags/',
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                return response.json().get('tags', {})
+            else:
+                print(f"    Warning: Could not fetch tags - HTTP {response.status_code}")
+                return {}
+        except Exception as e:
+            print(f"    Warning: Could not fetch tags - {e}")
+            return {}
+    
     def check_duplicate(self, name: str, publisher: str, range_name: str) -> Tuple[bool, int]:
         """Check if entry exists on server"""
         params = {
@@ -339,8 +356,34 @@ Examples:
         duplicates = []
         valid_count = 0
         
+        # Fetch existing tags from server
+        print("Fetching existing tags from server...")
+        existing_tags = importer.get_existing_tags()
+        print(f"✓ Found {sum(len(tags) for tags in existing_tags.values())} existing tags across {len(existing_tags)} tag types\n")
+        
+        # Collect all tags from CSV
+        csv_tags = {
+            'Publisher': set(),
+            'Faction Tag': set(),
+            'Army Role': set(),
+            'GW Alternative': set()
+        }
+        
         for row in rows:
             row_num = row['_row_number']
+            
+            # Collect tags from this row
+            if row.get('Publisher', '').strip():
+                csv_tags['Publisher'].add(row['Publisher'].strip())
+            if row.get('Faction Tag', '').strip():
+                csv_tags['Faction Tag'].add(row['Faction Tag'].strip())
+            if row.get('Army Role', '').strip():
+                csv_tags['Army Role'].add(row['Army Role'].strip())
+            gw_alt = row.get('GW Alternative', '').strip()
+            if gw_alt:
+                for tag in gw_alt.split(';'):
+                    if tag.strip():
+                        csv_tags['GW Alternative'].add(tag.strip())
             
             # Local validation
             errors = importer.validate_row(row, row_num)
@@ -378,6 +421,24 @@ Examples:
                 print(f"    Publisher: {pub or 'N/A'}, Range: {rng or 'N/A'}")
             print()
         
+        # Identify and display new tags
+        new_tags = {}
+        for tag_type, csv_tag_set in csv_tags.items():
+            if csv_tag_set:  # Only check if there are tags of this type
+                existing_tag_set = set(existing_tags.get(tag_type, []))
+                new_tag_set = csv_tag_set - existing_tag_set
+                if new_tag_set:
+                    new_tags[tag_type] = sorted(new_tag_set)
+        
+        if new_tags:
+            print("NEW TAGS TO BE CREATED:")
+            print()
+            for tag_type, tags in sorted(new_tags.items()):
+                print(f"  {tag_type}:")
+                for tag in tags:
+                    print(f"    - {tag}")
+            print()
+        
         # Summary
         print("=" * 70)
         print("SUMMARY:")
@@ -386,6 +447,8 @@ Examples:
         print(f"  Valid entries:         {valid_count}")
         print(f"  Duplicates to skip:    {len(duplicates)}")
         print(f"  Rows with errors:      {len(validation_errors)}")
+        total_new_tags = sum(len(tags) for tags in new_tags.values())
+        print(f"  New tags to create:    {total_new_tags}")
         print()
         
         if validation_errors:

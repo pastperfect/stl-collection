@@ -13,6 +13,7 @@ urlpatterns = [
     # API endpoints for bulk import
     path('api/health/', api_views.api_health, name='api_health'),
     path('api/check-duplicate/', api_views.api_check_duplicate, name='api_check_duplicate'),
+    path('api/get-tags/', api_views.api_get_tags, name='api_get_tags'),
     path('api/create-entry/', api_views.api_create_entry, name='api_create_entry'),
     path('api/upload-image/', api_views.api_upload_image, name='api_upload_image'),
 ]

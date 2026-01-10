@@ -123,6 +123,36 @@ def api_check_duplicate(request):
 
 
 @csrf_exempt
+@require_http_methods(["GET"])
+@require_basic_auth
+def api_get_tags(request):
+    """
+    Get all existing tags grouped by tag type.
+    GET /upload/api/get-tags/
+    Returns: {"success": true, "tags": {"Publisher": ["Tag1", "Tag2"], "Faction Tag": [...]}}
+    """
+    try:
+        # Get all tag types
+        tag_types = TagType.objects.all()
+        
+        tags_by_type = {}
+        for tag_type in tag_types:
+            # Get all tags for this type
+            tags = Tag.objects.filter(tag_type=tag_type).values_list('name', flat=True)
+            tags_by_type[tag_type.name] = list(tags)
+        
+        return JsonResponse({
+            'success': True,
+            'tags': tags_by_type
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
 @require_POST
 @require_basic_auth
 def api_create_entry(request):
