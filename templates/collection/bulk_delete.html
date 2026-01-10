@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Bulk Delete - STL Collection{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-trash"></i> Bulk Delete Entries</h2>
+            <button type="submit" form="bulk-delete-form" class="btn btn-danger">
+                <i class="bi bi-trash"></i> Delete Selected
+            </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-form">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ search_query }}" placeholder="Name, publisher, or range">
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="publisher" class="form-label">Publisher</label>
+                    <select class="form-select" id="publisher" name="publisher">
+                        <option value="">All Publishers</option>
+                        {% for pub in publishers %}
+                        <option value="{{ pub }}" {% if pub == publisher_filter %}selected{% endif %}>
+                            {{ pub }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="range" class="form-label">Range</label>
+                    <select class="form-select" id="range" name="range">
+                        <option value="">All Ranges</option>
+                        {% for rng in ranges %}
+                        <option value="{{ rng }}" {% if rng == range_filter %}selected{% endif %}>
+                            {{ rng }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Bulk Delete Form -->
+        <form method="post" id="bulk-delete-form" onsubmit="return confirmDelete();">
+            {% csrf_token %}
+            
+            <div class="mb-3">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleSelectAll()">
+                    <i class="bi bi-check-square"></i> Toggle All
+                </button>
+                <span class="ms-3 text-muted">
+                    <span id="selected-count">0</span> selected
+                </span>
+            </div>
+
+            <!-- Results Grid -->
+            <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
+                {% for entry in page_obj %}
+                <div class="col">
+                    <div class="card h-100">
+                        <div class="position-relative">
+                            {% if entry.get_display_image %}
+                            <div class="card-img-container">
+                                <img src="{{ entry.get_display_image.image.url }}" 
+                                     class="card-img-top" 
+                                     alt="{{ entry.name }}">
+                            </div>
+                            {% else %}
+                            <div class="card-img-container d-flex align-items-center justify-content-center bg-light">
+                                <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Checkbox overlay -->
+                            <div class="position-absolute top-0 start-0 p-2">
+                                <input type="checkbox" class="form-check-input delete-checkbox" 
+                                       name="entry_ids" value="{{ entry.id }}" 
+                                       style="width: 1.5rem; height: 1.5rem;"
+                                       onchange="updateCount()">
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <h6 class="card-title">{{ entry.name }}</h6>
+                            <p class="card-text small text-muted mb-1">
+                                {% if entry.publisher %}
+                                    <i class="bi bi-building"></i> {{ entry.publisher }}
+                                {% endif %}
+                            </p>
+                            <p class="card-text small text-muted">
+                                {% if entry.range %}
+                                    <i class="bi bi-collection"></i> {{ entry.range }}
+                                {% endif %}
+                            </p>
+                            <p class="card-text small">
+                                <span class="badge bg-secondary">
+                                    {{ entry.images.count }} image{{ entry.images.count|pluralize }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> No entries found matching your criteria.
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </form>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if query_string %}&{{ query_string }}{% endif %}">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}">Previous</a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if query_string %}&{{ query_string }}{% endif %}">Last</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateCount() {
+    const checkboxes = document.querySelectorAll('.delete-checkbox:checked');
+    document.getElementById('selected-count').textContent = checkboxes.length;
+}
+
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.delete-checkbox');
+    const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !anyChecked);
+    updateCount();
+}
+
+function confirmDelete() {
+    const count = document.querySelectorAll('.delete-checkbox:checked').length;
+    if (count === 0) {
+        alert('Please select at least one entry to delete.');
+        return false;
+    }
+    return confirm(`Are you sure you want to delete ${count} entr${count === 1 ? 'y' : 'ies'} and all associated images? This cannot be undone.`);
+}
+</script>
+{% endblock %}

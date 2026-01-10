@@ -245,3 +245,90 @@ def delete_image(request, image_id):
         'image': entry,  # Keep 'image' for template compatibility
         'entry': entry
     })
+
+@staff_member_required
+def bulk_delete(request):
+    """Bulk delete entries and their images - staff only"""
+    if request.method == 'POST':
+        entry_ids = request.POST.getlist('entry_ids')
+        
+        if not entry_ids:
+            messages.warning(request, 'No entries selected for deletion.')
+            return redirect('collection:bulk_delete')
+        
+        # Get all entries to delete
+        entries = Entry.objects.filter(id__in=entry_ids)
+        deleted_count = 0
+        deleted_images_count = 0
+        
+        for entry in entries:
+            # Delete all associated image files
+            for image in entry.images.all():
+                if image.image:
+                    try:
+                        if os.path.isfile(image.image.path):
+                            os.remove(image.image.path)
+                            deleted_images_count += 1
+                    except (ValueError, OSError):
+                        pass
+            
+            deleted_count += 1
+        
+        # Delete all entries (CASCADE will delete associated Image records)
+        entries.delete()
+        
+        messages.success(request, f'Successfully deleted {deleted_count} entries and {deleted_images_count} image files!')
+        return redirect('collection:bulk_delete')
+    
+    # GET request - show selection page
+    entries = Entry.objects.all()
+    
+    # Search functionality
+    search_query = request.GET.get('search', '')
+    if search_query:
+        entries = entries.filter(
+            Q(name__icontains=search_query) |
+            Q(publisher__icontains=search_query) |
+            Q(range__icontains=search_query)
+        ).distinct()
+    
+    # Filter by publisher
+    publisher_filter = request.GET.get('publisher', '')
+    if publisher_filter:
+        entries = entries.filter(publisher__icontains=publisher_filter)
+    
+    # Filter by range
+    range_filter = request.GET.get('range', '')
+    if range_filter:
+        entries = entries.filter(range__icontains=range_filter)
+    
+    # Get filter options
+    publishers = Entry.objects.exclude(
+        Q(publisher__isnull=True) | Q(publisher__exact='')
+    ).values_list('publisher', flat=True).distinct().order_by('publisher')
+    
+    ranges = Entry.objects.exclude(
+        Q(range__isnull=True) | Q(range__exact='')
+    ).values_list('range', flat=True).distinct().order_by('range')
+    
+    # Pagination
+    paginator = Paginator(entries, 24)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Build query string for pagination
+    query_params = []
+    for key, value in request.GET.items():
+        if key != 'page' and value:
+            query_params.append(f'{key}={value}')
+    query_string = '&'.join(query_params)
+    
+    return render(request, 'collection/bulk_delete.html', {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'publisher_filter': publisher_filter,
+        'range_filter': range_filter,
+        'publishers': publishers,
+        'ranges': ranges,
+        'query_string': query_string,
+    })

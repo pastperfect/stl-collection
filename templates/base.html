@@ -118,6 +118,11 @@
                             <i class="bi bi-collection"></i> Ranges
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'collection:bulk_delete' %}">
+                            <i class="bi bi-trash"></i> Bulk Delete
+                        </a>
+                    </li>
                     {% endif %}
                 </ul>
                 {% else %}
