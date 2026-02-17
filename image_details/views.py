@@ -15,10 +15,17 @@ def image_detail(request, entry_id):
     related_entries = Entry.objects.filter(
         Q(publisher=entry.publisher) | Q(range=entry.range)
     ).exclude(id=entry.id)[:6]
+
+    user_prints = entry.user_prints.all()
+    stl_files = entry.stl_files.all()
+    print_files = entry.print_files.all()
     
     return render(request, 'image_details/detail.html', {
         'entry': entry,
         'image': entry.get_display_image(),  # For backward compatibility
         'images': images,
-        'related_images': related_entries
+        'related_images': related_entries,
+        'user_prints': user_prints,
+        'stl_files': stl_files,
+        'print_files': print_files
     })

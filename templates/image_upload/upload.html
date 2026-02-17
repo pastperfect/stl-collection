@@ -182,7 +182,34 @@
                             </div>
                         </div>
                         <div class="form-text">Drag and drop one or more image files or click to browse. Supported formats: JPG, PNG, GIF, WebP</div>
-                    </div><div class="mb-3">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_stl_files" class="form-label">STL Archive Files</label>
+                        <div class="drop-zone border border-2 border-dashed rounded" id="stlDropZone">
+                            <div class="drop-zone-content" id="stlDropZoneContent">
+                                <i class="bi bi-archive fs-2 text-primary mb-2"></i>
+                                <h6 class="mb-2">Drag & Drop STL Archives Here</h6>
+                                <p class="text-muted mb-3">or click to browse files (multiple files supported)</p>
+                                <button type="button" class="btn btn-outline-primary" id="stlBrowseBtn">
+                                    <i class="bi bi-folder2-open"></i> Browse STL Archives
+                                </button>
+                                <input type="file" name="stl_files" id="id_stl_files" multiple accept=".zip,.7z,.rar" style="display: none;">
+                            </div>
+                            <div class="preview-container" id="stlPreviewContainer" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0"><span id="stlFileCount">0</span> file(s) selected</h6>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" id="stlClearAllBtn">
+                                        <i class="bi bi-x"></i> Clear All
+                                    </button>
+                                </div>
+                                <ul class="list-group" id="stlFileList"></ul>
+                            </div>
+                        </div>
+                        <div class="form-text">Supported formats: ZIP, 7Z, RAR</div>
+                    </div>
+
+                    <div class="mb-3">
                         <label for="{{ form.name.id_for_label }}" class="form-label">Name *</label>
                         <div class="input-group">
                             {{ form.name }}
@@ -349,8 +376,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const browseBtn = document.getElementById('browseBtn');
     const clearAllBtn = document.getElementById('clearAllBtn');
     const uploadCount = document.getElementById('uploadCount');
+
+    const stlInput = document.getElementById('id_stl_files');
+    const stlDropZone = document.getElementById('stlDropZone');
+    const stlDropZoneContent = document.getElementById('stlDropZoneContent');
+    const stlPreviewContainer = document.getElementById('stlPreviewContainer');
+    const stlFileList = document.getElementById('stlFileList');
+    const stlFileCount = document.getElementById('stlFileCount');
+    const stlBrowseBtn = document.getElementById('stlBrowseBtn');
+    const stlClearAllBtn = document.getElementById('stlClearAllBtn');
     
     let selectedFiles = [];
+    let selectedStlFiles = [];
     
     // Drag and drop functionality
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -377,6 +414,42 @@ document.addEventListener('DOMContentLoaded', function() {
         fileInput.click();
     });
     clearAllBtn.addEventListener('click', clearAllFiles);
+
+    if (stlDropZone && stlInput) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            stlDropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            stlDropZone.addEventListener(eventName, () => stlDropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            stlDropZone.addEventListener(eventName, () => stlDropZone.classList.remove('dragover'), false);
+        });
+
+        stlDropZone.addEventListener('drop', handleStlDrop, false);
+        stlDropZone.addEventListener('click', (e) => {
+            if (e.target === stlDropZone || e.target.closest('.drop-zone-content')) {
+                stlInput.click();
+            }
+        });
+
+        stlBrowseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            stlInput.click();
+        });
+
+        stlClearAllBtn.addEventListener('click', clearAllStlFiles);
+
+        stlInput.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) {
+                const files = Array.from(this.files).filter(isValidStlFile);
+                selectedStlFiles = files;
+                renderStlFiles();
+            }
+        });
+    }
     
     function preventDefaults(e) {
         e.preventDefault();
@@ -401,10 +474,26 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Please select valid image files (JPG, PNG, GIF, WebP).');
         }
     }
+
+    function handleStlDrop(e) {
+        const dt = e.dataTransfer;
+        const files = Array.from(dt.files).filter(isValidStlFile);
+
+        if (files.length > 0) {
+            addStlFiles(files);
+        } else {
+            alert('Please select valid STL archive files (ZIP, 7Z, RAR).');
+        }
+    }
     
     function isValidImageFile(file) {
         const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
         return validTypes.includes(file.type);
+    }
+
+    function isValidStlFile(file) {
+        const name = file.name.toLowerCase();
+        return name.endsWith('.zip') || name.endsWith('.7z') || name.endsWith('.rar');
     }
     
     function addFiles(files) {
@@ -418,6 +507,12 @@ document.addEventListener('DOMContentLoaded', function() {
             nameInput.value = cleanedName;
         }
     }
+
+    function addStlFiles(files) {
+        selectedStlFiles = [...selectedStlFiles, ...files];
+        updateStlInput();
+        renderStlFiles();
+    }
     
     function updateFileInput() {
         const dataTransfer = new DataTransfer();
@@ -425,6 +520,14 @@ document.addEventListener('DOMContentLoaded', function() {
             dataTransfer.items.add(file);
         });
         fileInput.files = dataTransfer.files;
+    }
+
+    function updateStlInput() {
+        const dataTransfer = new DataTransfer();
+        selectedStlFiles.forEach(file => {
+            dataTransfer.items.add(file);
+        });
+        stlInput.files = dataTransfer.files;
     }
     
     function renderPreviews() {
@@ -470,17 +573,56 @@ document.addEventListener('DOMContentLoaded', function() {
             filePreviewGrid.appendChild(previewItem);
         });
     }
+
+    function renderStlFiles() {
+        if (!stlDropZoneContent || !stlPreviewContainer) return;
+        if (selectedStlFiles.length === 0) {
+            stlDropZoneContent.style.display = 'flex';
+            stlPreviewContainer.style.display = 'none';
+            return;
+        }
+
+        stlDropZoneContent.style.display = 'none';
+        stlPreviewContainer.style.display = 'block';
+        stlFileCount.textContent = selectedStlFiles.length;
+
+        stlFileList.innerHTML = '';
+        selectedStlFiles.forEach((file, index) => {
+            const item = document.createElement('li');
+            item.className = 'list-group-item d-flex justify-content-between align-items-center';
+            item.innerHTML = `
+                <span class="text-truncate">${file.name}</span>
+                <button type="button" class="btn btn-sm btn-outline-danger" aria-label="Remove">
+                    <i class="bi bi-x"></i>
+                </button>
+            `;
+            item.querySelector('button').addEventListener('click', () => removeStlFile(index));
+            stlFileList.appendChild(item);
+        });
+    }
     
     function removeFile(index) {
         selectedFiles.splice(index, 1);
         updateFileInput();
         renderPreviews();
     }
+
+    function removeStlFile(index) {
+        selectedStlFiles.splice(index, 1);
+        updateStlInput();
+        renderStlFiles();
+    }
     
     function clearAllFiles() {
         selectedFiles = [];
         updateFileInput();
         renderPreviews();
+    }
+
+    function clearAllStlFiles() {
+        selectedStlFiles = [];
+        updateStlInput();
+        renderStlFiles();
     }
     
     function formatFileSize(bytes) {

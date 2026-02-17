@@ -1,6 +1,29 @@
+import os
 from django import forms
+from django.conf import settings
 from .models import Entry, Image
 from tags.models import Tag
+
+ALLOWED_STL_EXTENSIONS = {'.zip', '.7z', '.rar'}
+ALLOWED_PRINT_EXTENSIONS = {'.pwsz', '.pwscene'}
+ALLOWED_USER_PRINT_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
+
+
+def validate_file_extension(uploaded_file, allowed_extensions):
+    ext = os.path.splitext(uploaded_file.name)[1].lower()
+    if ext not in allowed_extensions:
+        raise forms.ValidationError(
+            f"Unsupported file type: {ext}. Allowed: {', '.join(sorted(allowed_extensions))}."
+        )
+
+
+def validate_file_size(uploaded_file):
+    max_size = getattr(settings, 'MAX_UPLOAD_SIZE', None)
+    if max_size and uploaded_file.size > max_size:
+        raise forms.ValidationError(
+            f"File exceeds max size of {max_size // (1024 * 1024)} MB."
+        )
+
 
 class EntryUploadForm(forms.ModelForm):
     """Form for creating new entries with multiple images."""

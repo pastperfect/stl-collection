@@ -214,112 +214,400 @@
     font-weight: 600;
     z-index: 5;
 }
+
+.user-thumbnail-item {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border: 3px solid transparent;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+    flex-shrink: 0;
+}
+
+.user-thumbnail-item:hover {
+    border-color: #0d6efd;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.user-thumbnail-item.active {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+.user-thumbnail-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-upload-thumbnail {
+    min-height: 80px;
+    border: 2px dashed #dee2e6;
+    border-radius: 0.5rem;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    padding: 1rem;
+}
+
+.user-upload-thumbnail:hover {
+    border-color: #0d6efd;
+    background: #e7f1ff;
+    transform: translateY(-2px);
+}
+
+.user-upload-thumbnail.dragover {
+    border-color: #0d6efd;
+    background: #cfe2ff;
+    border-width: 3px;
+    transform: scale(1.05);
+}
+
+.file-manager {
+    border: 1px solid #dee2e6;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    background: #f8f9fa;
+}
+
+.file-dropzone {
+    border: 2px dashed #dee2e6;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    background: white;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.file-dropzone.dragover {
+    border-color: #0d6efd;
+    background: #e7f1ff;
+    transform: translateY(-2px);
+}
+
+.file-list-item {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid #dee2e6;
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h3><i class="bi bi-images"></i> {{ entry.name }}
-                    <span class="badge bg-secondary">{{ images.count }} image{{ images.count|pluralize }}</span>
-                </h3>
-            </div>
-            <div class="card-body">
-                <!-- Main Image Display -->
-                <div class="main-image-container" id="mainImageContainer">
-                    {% with images.first as first_img %}
-                    {% if first_img and first_img.image %}
-                    <img id="mainImage" 
-                         src="{{ first_img.image.url }}" 
-                         alt="{{ entry.name }}"
-                         class="main-image"
-                         data-bs-toggle="modal" 
-                         data-bs-target="#imageModal"
-                         data-image-id="{{ first_img.id }}">
-                    <div class="image-badge">
-                        <i class="bi bi-arrows-fullscreen"></i> Click to enlarge
+        <ul class="nav nav-tabs" id="entryTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="images-tab" data-bs-toggle="tab" data-bs-target="#tab-images" type="button" role="tab">
+                    <i class="bi bi-images"></i> Images
+                    <span class="badge bg-secondary ms-1">{{ images.count }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="user-prints-tab" data-bs-toggle="tab" data-bs-target="#tab-user-prints" type="button" role="tab">
+                    <i class="bi bi-camera"></i> User Prints
+                    <span class="badge bg-secondary ms-1">{{ user_prints.count }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="stl-files-tab" data-bs-toggle="tab" data-bs-target="#tab-stl-files" type="button" role="tab">
+                    <i class="bi bi-archive"></i> STL Files
+                    <span class="badge bg-secondary ms-1">{{ stl_files.count }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="print-files-tab" data-bs-toggle="tab" data-bs-target="#tab-print-files" type="button" role="tab">
+                    <i class="bi bi-printer"></i> Print Files
+                    <span class="badge bg-secondary ms-1">{{ print_files.count }}</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content mt-3" id="entryTabsContent">
+            <div class="tab-pane fade show active" id="tab-images" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="bi bi-images"></i> {{ entry.name }}
+                            <span class="badge bg-secondary">{{ images.count }} image{{ images.count|pluralize }}</span>
+                        </h3>
                     </div>
-                    {% if first_img.is_primary %}
-                    <div class="primary-badge">
-                        <i class="bi bi-star-fill"></i> Primary
-                    </div>
-                    {% endif %}
-                    {% else %}
-                    <div class="text-center text-muted">
-                        <i class="bi bi-image" style="font-size: 5rem;"></i>
-                        <p>No image available</p>
-                    </div>
-                    {% endif %}
-                    {% endwith %}
-                </div>
-                
-                <!-- Thumbnail Carousel -->
-                <div class="thumbnail-gallery">
-                    {% if images.count > 0 %}
-                    <div id="thumbnailCarousel" class="carousel slide thumbnail-carousel" data-bs-ride="false">
-                        <!-- Carousel Indicators -->
-                        {% if images.count > 5 %}
-                        <div class="carousel-indicators">
-                            {% for img in images %}
-                            {% if forloop.counter0|divisibleby:5 %}
-                            {% widthratio forloop.counter0 5 1 as slide_index %}
-                            <button type="button" data-bs-target="#thumbnailCarousel" data-bs-slide-to="{{ slide_index }}" {% if forloop.first %}class="active"{% endif %}></button>
-                            {% endif %}
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                        
-                        <!-- Carousel Items -->
-                        <div class="carousel-inner">
-                            {% for img in images %}
-                            {% if forloop.counter0|divisibleby:5 %}
-                            <div class="carousel-item {% if forloop.counter0 == 0 %}active{% endif %}">
-                            {% endif %}
-                                <div class="thumbnail-item {% if forloop.counter == 1 %}active{% endif %} {% if img.is_primary %}primary{% endif %}" 
-                                     data-image-id="{{ img.id }}"
-                                     data-image-url="{{ img.image.url }}"
-                                     data-is-primary="{{ img.is_primary|yesno:'true,false' }}"
-                                     onclick="switchMainImage({{ img.id }}, '{{ img.image.url }}', {{ img.is_primary|yesno:'true,false' }})">
-                                    <img src="{{ img.image.url }}" alt="{{ entry.name }}">
-                                </div>
-                            {% if forloop.counter|divisibleby:5 or forloop.last %}
+                    <div class="card-body">
+                        <!-- Main Image Display -->
+                        <div class="main-image-container" id="mainImageContainer">
+                            {% with images.first as first_img %}
+                            {% if first_img and first_img.image %}
+                            <img id="mainImage" 
+                                 src="{{ first_img.image.url }}" 
+                                 alt="{{ entry.name }}"
+                                 class="main-image"
+                                 data-bs-toggle="modal" 
+                                 data-bs-target="#imageModal"
+                                 data-image-id="{{ first_img.id }}">
+                            <div class="image-badge">
+                                <i class="bi bi-arrows-fullscreen"></i> Click to enlarge
+                            </div>
+                            {% if first_img.is_primary %}
+                            <div class="primary-badge">
+                                <i class="bi bi-star-fill"></i> Primary
                             </div>
                             {% endif %}
-                            {% endfor %}
+                            {% else %}
+                            <div class="text-center text-muted">
+                                <i class="bi bi-image" style="font-size: 5rem;"></i>
+                                <p>No image available</p>
+                            </div>
+                            {% endif %}
+                            {% endwith %}
                         </div>
                         
-                        <!-- Carousel Controls -->
-                        {% if images.count > 5 %}
-                        <button class="carousel-control-prev" type="button" data-bs-target="#thumbnailCarousel" data-bs-slide="prev">
-                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                            <span class="visually-hidden">Previous</span>
-                        </button>
-                        <button class="carousel-control-next" type="button" data-bs-target="#thumbnailCarousel" data-bs-slide="next">
-                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                            <span class="visually-hidden">Next</span>
-                        </button>
-                        {% endif %}
+                        <!-- Thumbnail Carousel -->
+                        <div class="thumbnail-gallery">
+                            {% if images.count > 0 %}
+                            <div id="thumbnailCarousel" class="carousel slide thumbnail-carousel" data-bs-ride="false">
+                                <!-- Carousel Indicators -->
+                                {% if images.count > 5 %}
+                                <div class="carousel-indicators">
+                                    {% for img in images %}
+                                    {% if forloop.counter0|divisibleby:5 %}
+                                    {% widthratio forloop.counter0 5 1 as slide_index %}
+                                    <button type="button" data-bs-target="#thumbnailCarousel" data-bs-slide-to="{{ slide_index }}" {% if forloop.first %}class="active"{% endif %}></button>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Carousel Items -->
+                                <div class="carousel-inner">
+                                    {% for img in images %}
+                                    {% if forloop.counter0|divisibleby:5 %}
+                                    <div class="carousel-item {% if forloop.counter0 == 0 %}active{% endif %}">
+                                    {% endif %}
+                                        <div class="thumbnail-item {% if forloop.counter == 1 %}active{% endif %} {% if img.is_primary %}primary{% endif %}" 
+                                             data-image-id="{{ img.id }}"
+                                             data-image-url="{{ img.image.url }}"
+                                             data-is-primary="{{ img.is_primary|yesno:'true,false' }}"
+                                             onclick="switchMainImage({{ img.id }}, '{{ img.image.url }}', {{ img.is_primary|yesno:'true,false' }})">
+                                            <img src="{{ img.image.url }}" alt="{{ entry.name }}">
+                                        </div>
+                                    {% if forloop.counter|divisibleby:5 or forloop.last %}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                                
+                                <!-- Carousel Controls -->
+                                {% if images.count > 5 %}
+                                <button class="carousel-control-prev" type="button" data-bs-target="#thumbnailCarousel" data-bs-slide="prev">
+                                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                    <span class="visually-hidden">Previous</span>
+                                </button>
+                                <button class="carousel-control-next" type="button" data-bs-target="#thumbnailCarousel" data-bs-slide="next">
+                                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                    <span class="visually-hidden">Next</span>
+                                </button>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            {% if user.is_staff %}
+                            <div class="upload-thumbnail mt-3" id="uploadDropZone">
+                                <i class="bi bi-plus-circle"></i>
+                                <span>Drag & Drop<br>or Click</span>
+                            </div>
+                            <input type="file" id="uploadMoreInput" multiple accept="image/*" style="display: none;">
+                            {% endif %}
+                        </div>
                     </div>
-                    {% endif %}
                     
-                    {% if user.is_staff %}
-                    <div class="upload-thumbnail mt-3" id="uploadDropZone">
-                        <i class="bi bi-plus-circle"></i>
-                        <span>Drag & Drop<br>or Click</span>
+                    {% if entry.notes %}
+                    <div class="card-body border-top">
+                        <h5>Notes</h5>
+                        <p class="card-text">{{ entry.notes|linebreaks }}</p>
                     </div>
-                    <input type="file" id="uploadMoreInput" multiple accept="image/*" style="display: none;">
                     {% endif %}
                 </div>
             </div>
-            
-            {% if entry.notes %}
-            <div class="card-body border-top">
-                <h5>Notes</h5>
-                <p class="card-text">{{ entry.notes|linebreaks }}</p>
+
+            <div class="tab-pane fade" id="tab-user-prints" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="bi bi-camera"></i> User Prints
+                            <span class="badge bg-secondary">{{ user_prints.count }} image{{ user_prints.count|pluralize }}</span>
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="main-image-container" id="userMainImageContainer">
+                            {% with user_prints.first as first_print %}
+                            {% if first_print and first_print.image %}
+                            <img id="userMainImage"
+                                 src="{{ first_print.image.url }}"
+                                 alt="{{ entry.name }} user print"
+                                 class="main-image"
+                                 data-bs-toggle="modal"
+                                 data-bs-target="#userPrintModal"
+                                 data-image-id="{{ first_print.id }}">
+                            <div class="image-badge">
+                                <i class="bi bi-arrows-fullscreen"></i> Click to enlarge
+                            </div>
+                            {% else %}
+                            <div class="text-center text-muted">
+                                <i class="bi bi-camera" style="font-size: 5rem;"></i>
+                                <p>No user prints yet</p>
+                            </div>
+                            {% endif %}
+                            {% endwith %}
+                        </div>
+
+                        <div class="thumbnail-gallery">
+                            {% if user_prints.count > 0 %}
+                            <div id="userPrintCarousel" class="carousel slide thumbnail-carousel" data-bs-ride="false">
+                                {% if user_prints.count > 5 %}
+                                <div class="carousel-indicators">
+                                    {% for img in user_prints %}
+                                    {% if forloop.counter0|divisibleby:5 %}
+                                    {% widthratio forloop.counter0 5 1 as slide_index %}
+                                    <button type="button" data-bs-target="#userPrintCarousel" data-bs-slide-to="{{ slide_index }}" {% if forloop.first %}class="active"{% endif %}></button>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+
+                                <div class="carousel-inner">
+                                    {% for img in user_prints %}
+                                    {% if forloop.counter0|divisibleby:5 %}
+                                    <div class="carousel-item {% if forloop.counter0 == 0 %}active{% endif %}">
+                                    {% endif %}
+                                        <div class="user-thumbnail-item {% if forloop.counter == 1 %}active{% endif %}"
+                                            data-image-id="{{ img.id }}"
+                                            data-image-url="{{ img.image.url }}"
+                                            onclick="switchUserPrint({{ img.id }}, '{{ img.image.url }}')">
+                                            <img src="{{ img.image.url }}" alt="{{ entry.name }} user print">
+                                        </div>
+                                    {% if forloop.counter|divisibleby:5 or forloop.last %}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+
+                                {% if user_prints.count > 5 %}
+                                <button class="carousel-control-prev" type="button" data-bs-target="#userPrintCarousel" data-bs-slide="prev">
+                                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                    <span class="visually-hidden">Previous</span>
+                                </button>
+                                <button class="carousel-control-next" type="button" data-bs-target="#userPrintCarousel" data-bs-slide="next">
+                                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                    <span class="visually-hidden">Next</span>
+                                </button>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
+                            <div class="user-upload-thumbnail mt-3" id="userPrintDropZone">
+                                <i class="bi bi-plus-circle"></i>
+                                <span>Drag & Drop<br>or Click</span>
+                            </div>
+                            <input type="file" id="userPrintInput" multiple accept="image/*" style="display: none;">
+                        </div>
+                    </div>
+                </div>
             </div>
-            {% endif %}
+
+            <div class="tab-pane fade" id="tab-stl-files" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="bi bi-archive"></i> STL Files</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="file-manager">
+                            <div class="file-dropzone" id="stlDropZone">
+                                <i class="bi bi-cloud-upload fs-2 text-primary"></i>
+                                <p class="mb-1">Drag & drop STL archives or click to upload</p>
+                                <small class="text-muted">Supported: .zip, .7z, .rar</small>
+                            </div>
+                            <input type="file" id="stlInput" multiple accept=".zip,.7z,.rar" style="display: none;">
+
+                            <div class="mt-4">
+                                {% if stl_files.count > 0 %}
+                                <div class="d-grid gap-2" id="stlFileList">
+                                    {% for stl in stl_files %}
+                                    <div class="file-list-item d-flex justify-content-between align-items-center" data-file-id="{{ stl.id }}">
+                                        <div>
+                                            <div class="fw-semibold">{{ stl.original_name }}</div>
+                                            <small class="text-muted">{{ stl.file.size|filesizeformat }} • {{ stl.upload_date|date:"M d, Y g:i A" }}</small>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'image_upload:download_stl_file' entry.id stl.id %}">
+                                                <i class="bi bi-download"></i> Download
+                                            </a>
+                                            <button class="btn btn-sm btn-outline-danger stl-delete-btn" data-delete-url="{% url 'image_upload:delete_stl_file' entry.id stl.id %}">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <div class="text-muted">No STL files uploaded yet.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-print-files" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="bi bi-printer"></i> Print Files</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="file-manager">
+                            <div class="file-dropzone" id="printDropZone">
+                                <i class="bi bi-cloud-upload fs-2 text-primary"></i>
+                                <p class="mb-1">Drag & drop print files or click to upload</p>
+                                <small class="text-muted">Supported: .pwsz, .pwscene</small>
+                            </div>
+                            <input type="file" id="printInput" multiple accept=".pwsz,.pwscene" style="display: none;">
+
+                            <div class="mt-4">
+                                {% if print_files.count > 0 %}
+                                <div class="d-grid gap-2" id="printFileList">
+                                    {% for pfile in print_files %}
+                                    <div class="file-list-item d-flex justify-content-between align-items-center" data-file-id="{{ pfile.id }}">
+                                        <div>
+                                            <div class="fw-semibold">{{ pfile.original_name }}</div>
+                                            <small class="text-muted">{{ pfile.file.size|filesizeformat }} • {{ pfile.upload_date|date:"M d, Y g:i A" }}</small>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'image_upload:download_print_file' entry.id pfile.id %}">
+                                                <i class="bi bi-download"></i> Download
+                                            </a>
+                                            <button class="btn btn-sm btn-outline-danger print-delete-btn" data-delete-url="{% url 'image_upload:delete_print_file' entry.id pfile.id %}">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <div class="text-muted">No print files uploaded yet.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -469,6 +757,36 @@
                 </button>
                 {% endif %}
                 <a id="modalDownloadLink" href="" target="_blank" class="btn btn-outline-light">
+                    <i class="bi bi-download"></i> Download Original
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Full Screen User Print Modal -->
+<div class="modal fade" id="userPrintModal" tabindex="-1" aria-labelledby="userPrintModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content bg-dark">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-white" id="userPrintModalLabel">{{ entry.name }} - User Prints</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center justify-content-center p-0 position-relative">
+                <button id="userModalPrevBtn" type="button" class="btn btn-dark position-absolute start-0 ms-3" style="z-index: 1000; opacity: 0.7;" onclick="navigateUserPrint(-1)">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <img id="userModalImage" src="" class="img-fluid" alt="{{ entry.name }} user print" style="max-height: 100vh; max-width: 100%; object-fit: contain;">
+                <button id="userModalNextBtn" type="button" class="btn btn-dark position-absolute end-0 me-3" style="z-index: 1000; opacity: 0.7;" onclick="navigateUserPrint(1)">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button id="userModalDeleteBtn" type="button" class="btn btn-outline-danger" onclick="deleteUserPrintModal()">
+                    <i class="bi bi-trash"></i> Delete Image
+                </button>
+                <a id="userModalDownloadLink" href="" target="_blank" class="btn btn-outline-light">
                     <i class="bi bi-download"></i> Download Original
                 </a>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -1012,5 +1330,294 @@ function uploadMoreImages(entryId, files) {
         alert('Error uploading images');
     });
 }
+
+// User prints gallery logic
+function switchUserPrint(imageId, imageUrl) {
+    const mainImage = document.getElementById('userMainImage');
+    if (!mainImage) return;
+    mainImage.src = imageUrl;
+    mainImage.dataset.imageId = imageId;
+
+    document.querySelectorAll('.user-thumbnail-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    const activeItem = document.querySelector(`.user-thumbnail-item[data-image-id="${imageId}"]`);
+    if (activeItem) {
+        activeItem.classList.add('active');
+    }
+
+    updateUserPrintModalButtons(imageId, imageUrl);
+}
+
+function updateUserPrintModalButtons(imageId, imageUrl) {
+    const modalImage = document.getElementById('userModalImage');
+    const downloadLink = document.getElementById('userModalDownloadLink');
+    if (modalImage && downloadLink) {
+        modalImage.src = imageUrl;
+        downloadLink.href = imageUrl;
+        modalImage.dataset.imageId = imageId;
+    }
+    updateUserPrintNavigationButtons();
+}
+
+function navigateUserPrint(direction) {
+    const thumbnails = Array.from(document.querySelectorAll('.user-thumbnail-item'));
+    const currentImageId = document.getElementById('userMainImage')?.dataset.imageId;
+    const currentIndex = thumbnails.findIndex(t => t.dataset.imageId === currentImageId);
+    if (currentIndex === -1) return;
+
+    let newIndex = currentIndex + direction;
+    if (newIndex < 0) {
+        newIndex = thumbnails.length - 1;
+    } else if (newIndex >= thumbnails.length) {
+        newIndex = 0;
+    }
+
+    const newThumbnail = thumbnails[newIndex];
+    switchUserPrint(newThumbnail.dataset.imageId, newThumbnail.dataset.imageUrl);
+}
+
+function updateUserPrintNavigationButtons() {
+    const imageCount = document.querySelectorAll('.user-thumbnail-item').length;
+    const prevBtn = document.getElementById('userModalPrevBtn');
+    const nextBtn = document.getElementById('userModalNextBtn');
+    if (prevBtn && nextBtn) {
+        if (imageCount <= 1) {
+            prevBtn.style.display = 'none';
+            nextBtn.style.display = 'none';
+        } else {
+            prevBtn.style.display = 'block';
+            nextBtn.style.display = 'block';
+        }
+    }
+}
+
+function deleteUserPrintModal() {
+    const mainImage = document.getElementById('userMainImage');
+    const imageId = mainImage?.dataset.imageId;
+    const entryId = {{ entry.id }};
+
+    if (!imageId) return;
+    if (!confirm('Delete this user print image?')) return;
+
+    fetch(`/upload/entry/${entryId}/user-print/${imageId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || 'Failed to delete user print');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting user print');
+    });
+}
+
+function uploadUserPrints(entryId, files) {
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+        formData.append('user_prints', files[i]);
+    }
+
+    fetch(`/upload/entry/${entryId}/add-user-prints/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || 'Failed to upload user prints');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error uploading user prints');
+    });
+}
+
+function setupFileManager({
+    dropZoneId,
+    inputId,
+    uploadUrl,
+    deleteButtonClass,
+    formFieldName
+}) {
+    const dropZone = document.getElementById(dropZoneId);
+    const input = document.getElementById(inputId);
+
+    if (!dropZone || !input) return;
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+    });
+
+    dropZone.addEventListener('click', () => input.click());
+
+    dropZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            uploadFiles(files);
+        }
+    });
+
+    input.addEventListener('change', function() {
+        if (this.files && this.files.length > 0) {
+            uploadFiles(this.files);
+        }
+    });
+
+    function uploadFiles(files) {
+        const formData = new FormData();
+        for (let i = 0; i < files.length; i++) {
+            formData.append(formFieldName, files[i]);
+        }
+
+        fetch(uploadUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert(data.error || 'Failed to upload files');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error uploading files');
+        });
+    }
+
+    document.querySelectorAll(`.${deleteButtonClass}`).forEach(button => {
+        button.addEventListener('click', () => {
+            if (!confirm('Delete this file?')) return;
+            const deleteUrl = button.getAttribute('data-delete-url');
+            fetch(deleteUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const row = button.closest('.file-list-item');
+                    if (row) {
+                        row.remove();
+                    }
+                } else {
+                    alert(data.error || 'Failed to delete file');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting file');
+            });
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const userPrintInput = document.getElementById('userPrintInput');
+    const userPrintDropZone = document.getElementById('userPrintDropZone');
+    const userMainImage = document.getElementById('userMainImage');
+    const userPrintModal = document.getElementById('userPrintModal');
+
+    if (userMainImage) {
+        userMainImage.addEventListener('click', function() {
+            updateUserPrintModalButtons(this.dataset.imageId, this.src);
+        });
+    }
+
+    if (userPrintModal) {
+        userPrintModal.addEventListener('show.bs.modal', function() {
+            const currentImageId = userMainImage?.dataset.imageId;
+            const currentImageUrl = userMainImage?.src;
+            if (currentImageId && currentImageUrl) {
+                updateUserPrintModalButtons(currentImageId, currentImageUrl);
+            }
+        });
+    }
+
+    if (userPrintInput && userPrintDropZone) {
+        userPrintDropZone.addEventListener('click', () => userPrintInput.click());
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            userPrintDropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            userPrintDropZone.addEventListener(eventName, () => userPrintDropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            userPrintDropZone.addEventListener(eventName, () => userPrintDropZone.classList.remove('dragover'), false);
+        });
+
+        userPrintDropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                uploadUserPrints({{ entry.id }}, files);
+            }
+        }, false);
+
+        userPrintInput.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) {
+                uploadUserPrints({{ entry.id }}, this.files);
+            }
+        });
+    }
+
+    setupFileManager({
+        dropZoneId: 'stlDropZone',
+        inputId: 'stlInput',
+        uploadUrl: `/upload/entry/{{ entry.id }}/add-stl-files/`,
+        deleteButtonClass: 'stl-delete-btn',
+        formFieldName: 'stl_files'
+    });
+
+    setupFileManager({
+        dropZoneId: 'printDropZone',
+        inputId: 'printInput',
+        uploadUrl: `/upload/entry/{{ entry.id }}/add-print-files/`,
+        deleteButtonClass: 'print-delete-btn',
+        formFieldName: 'print_files'
+    });
+});
 </script>
 {% endblock %}

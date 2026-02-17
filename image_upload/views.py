@@ -1,11 +1,20 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
-from django.http import JsonResponse
+from django.core.exceptions import ValidationError
+from django.http import FileResponse, JsonResponse
 from django.views.decorators.http import require_POST
-from .forms import EntryUploadForm
-from .models import Entry, Image
+from .forms import (
+    EntryUploadForm,
+    ALLOWED_PRINT_EXTENSIONS,
+    ALLOWED_STL_EXTENSIONS,
+    ALLOWED_USER_PRINT_EXTENSIONS,
+    validate_file_extension,
+    validate_file_size,
+)
+from .models import Entry, Image, PrintFile, STLFile, UserPrintImage
 from tags.models import TagType
 import os
 import re
@@ -27,12 +36,27 @@ def to_camel_case(text):
         camel_case += word.capitalize()
     return camel_case
 
-@staff_member_required
+
+def validate_uploaded_files(uploaded_files, allowed_extensions):
+    for uploaded_file in uploaded_files:
+        validate_file_extension(uploaded_file, allowed_extensions)
+        validate_file_size(uploaded_file)
+
+@login_required
 def upload_image(request):
-    """Upload new entry with one or more images - staff only"""
+    """Upload new entry with one or more images"""
     if request.method == 'POST':
         form = EntryUploadForm(request.POST, request.FILES)
         if form.is_valid():
+            # Validate STL archive files (optional) before saving
+            stl_files = request.FILES.getlist('stl_files')
+            if stl_files:
+                try:
+                    validate_uploaded_files(stl_files, ALLOWED_STL_EXTENSIONS)
+                except ValidationError as exc:
+                    messages.error(request, str(exc))
+                    return redirect('image_upload:upload')
+
             # Create the Entry
             entry = form.save()
             
@@ -72,11 +96,23 @@ def upload_image(request):
                 
                 # Save to database
                 image.save()
+
+            # Process STL archive files (optional)
+            if stl_files:
+                for stl_file in stl_files:
+                    STLFile.objects.create(
+                        entry=entry,
+                        file=stl_file,
+                        original_name=stl_file.name,
+                        uploaded_by=request.user
+                    )
             
             file_count = len(uploaded_files)
+            stl_count = len(stl_files)
+            stl_message = f" and {stl_count} STL archive{'s' if stl_count != 1 else ''}" if stl_count else ""
             messages.success(
-                request, 
-                f'Successfully uploaded "{entry.name}" with {file_count} image{"s" if file_count > 1 else ""}!'
+                request,
+                f'Successfully uploaded "{entry.name}" with {file_count} image{"s" if file_count > 1 else ""}{stl_message}!'
             )
             return redirect('image_upload:upload')
     else:
@@ -241,3 +277,148 @@ def delete_image(request, entry_id, image_id):
         'success': True,
         'deleted_id': image_id
     })
+
+
+@login_required
+@require_POST
+def add_stl_files(request, entry_id):
+    """AJAX endpoint to add STL archive files to an entry"""
+    entry = get_object_or_404(Entry, id=entry_id)
+    uploaded_files = request.FILES.getlist('stl_files')
+
+    if not uploaded_files:
+        return JsonResponse({'success': False, 'error': 'No files provided'}, status=400)
+
+    try:
+        validate_uploaded_files(uploaded_files, ALLOWED_STL_EXTENSIONS)
+    except ValidationError as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+
+    added_files = []
+    for uploaded_file in uploaded_files:
+        stl_file = STLFile.objects.create(
+            entry=entry,
+            file=uploaded_file,
+            original_name=uploaded_file.name,
+            uploaded_by=request.user
+        )
+        added_files.append({
+            'id': stl_file.id,
+            'name': stl_file.original_name,
+            'url': stl_file.file.url,
+            'size': stl_file.file.size,
+            'uploaded': stl_file.upload_date.isoformat()
+        })
+
+    return JsonResponse({'success': True, 'files': added_files})
+
+
+@login_required
+@require_POST
+def add_print_files(request, entry_id):
+    """AJAX endpoint to add print files to an entry"""
+    entry = get_object_or_404(Entry, id=entry_id)
+    uploaded_files = request.FILES.getlist('print_files')
+
+    if not uploaded_files:
+        return JsonResponse({'success': False, 'error': 'No files provided'}, status=400)
+
+    try:
+        validate_uploaded_files(uploaded_files, ALLOWED_PRINT_EXTENSIONS)
+    except ValidationError as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+
+    added_files = []
+    for uploaded_file in uploaded_files:
+        print_file = PrintFile.objects.create(
+            entry=entry,
+            file=uploaded_file,
+            original_name=uploaded_file.name,
+            uploaded_by=request.user
+        )
+        added_files.append({
+            'id': print_file.id,
+            'name': print_file.original_name,
+            'url': print_file.file.url,
+            'size': print_file.file.size,
+            'uploaded': print_file.upload_date.isoformat()
+        })
+
+    return JsonResponse({'success': True, 'files': added_files})
+
+
+@login_required
+@require_POST
+def add_user_prints(request, entry_id):
+    """AJAX endpoint to add user print images to an entry"""
+    entry = get_object_or_404(Entry, id=entry_id)
+    uploaded_files = request.FILES.getlist('user_prints')
+
+    if not uploaded_files:
+        return JsonResponse({'success': False, 'error': 'No files provided'}, status=400)
+
+    try:
+        validate_uploaded_files(uploaded_files, ALLOWED_USER_PRINT_EXTENSIONS)
+    except ValidationError as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+
+    added_images = []
+    for uploaded_file in uploaded_files:
+        user_print = UserPrintImage.objects.create(
+            entry=entry,
+            image=uploaded_file,
+            original_name=uploaded_file.name,
+            uploaded_by=request.user
+        )
+        added_images.append({
+            'id': user_print.id,
+            'url': user_print.image.url,
+            'name': user_print.original_name,
+            'uploaded': user_print.upload_date.isoformat()
+        })
+
+    return JsonResponse({'success': True, 'images': added_images})
+
+
+@login_required
+@require_POST
+def delete_stl_file(request, entry_id, file_id):
+    stl_file = get_object_or_404(STLFile, id=file_id, entry_id=entry_id)
+    if stl_file.file:
+        stl_file.file.delete()
+    stl_file.delete()
+    return JsonResponse({'success': True, 'deleted_id': file_id})
+
+
+@login_required
+@require_POST
+def delete_print_file(request, entry_id, file_id):
+    print_file = get_object_or_404(PrintFile, id=file_id, entry_id=entry_id)
+    if print_file.file:
+        print_file.file.delete()
+    print_file.delete()
+    return JsonResponse({'success': True, 'deleted_id': file_id})
+
+
+@login_required
+@require_POST
+def delete_user_print(request, entry_id, image_id):
+    user_print = get_object_or_404(UserPrintImage, id=image_id, entry_id=entry_id)
+    if user_print.image:
+        user_print.image.delete()
+    user_print.delete()
+    return JsonResponse({'success': True, 'deleted_id': image_id})
+
+
+@login_required
+def download_stl_file(request, entry_id, file_id):
+    stl_file = get_object_or_404(STLFile, id=file_id, entry_id=entry_id)
+    response = FileResponse(stl_file.file.open('rb'), as_attachment=True, filename=stl_file.original_name)
+    return response
+
+
+@login_required
+def download_print_file(request, entry_id, file_id):
+    print_file = get_object_or_404(PrintFile, id=file_id, entry_id=entry_id)
+    response = FileResponse(print_file.file.open('rb'), as_attachment=True, filename=print_file.original_name)
+    return response

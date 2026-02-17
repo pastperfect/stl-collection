@@ -9,6 +9,14 @@ urlpatterns = [
     path('entry/<int:entry_id>/add-images/', views.add_images_to_entry, name='add_images'),
     path('entry/<int:entry_id>/image/<int:image_id>/set-primary/', views.set_primary_image, name='set_primary'),
     path('entry/<int:entry_id>/image/<int:image_id>/delete/', views.delete_image, name='delete_image'),
+    path('entry/<int:entry_id>/add-stl-files/', views.add_stl_files, name='add_stl_files'),
+    path('entry/<int:entry_id>/stl/<int:file_id>/delete/', views.delete_stl_file, name='delete_stl_file'),
+    path('entry/<int:entry_id>/stl/<int:file_id>/download/', views.download_stl_file, name='download_stl_file'),
+    path('entry/<int:entry_id>/add-print-files/', views.add_print_files, name='add_print_files'),
+    path('entry/<int:entry_id>/print/<int:file_id>/delete/', views.delete_print_file, name='delete_print_file'),
+    path('entry/<int:entry_id>/print/<int:file_id>/download/', views.download_print_file, name='download_print_file'),
+    path('entry/<int:entry_id>/add-user-prints/', views.add_user_prints, name='add_user_prints'),
+    path('entry/<int:entry_id>/user-print/<int:image_id>/delete/', views.delete_user_print, name='delete_user_print'),
     
     # API endpoints for bulk import
     path('api/health/', api_views.api_health, name='api_health'),
