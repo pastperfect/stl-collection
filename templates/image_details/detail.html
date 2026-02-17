@@ -311,25 +311,21 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="images-tab" data-bs-toggle="tab" data-bs-target="#tab-images" type="button" role="tab">
                     <i class="bi bi-images"></i> Images
-                    <span class="badge bg-secondary ms-1">{{ images.count }}</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="user-prints-tab" data-bs-toggle="tab" data-bs-target="#tab-user-prints" type="button" role="tab">
                     <i class="bi bi-camera"></i> User Prints
-                    <span class="badge bg-secondary ms-1">{{ user_prints.count }}</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="stl-files-tab" data-bs-toggle="tab" data-bs-target="#tab-stl-files" type="button" role="tab">
                     <i class="bi bi-archive"></i> STL Files
-                    <span class="badge bg-secondary ms-1">{{ stl_files.count }}</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="print-files-tab" data-bs-toggle="tab" data-bs-target="#tab-print-files" type="button" role="tab">
                     <i class="bi bi-printer"></i> Print Files
-                    <span class="badge bg-secondary ms-1">{{ print_files.count }}</span>
                 </button>
             </li>
         </ul>
@@ -339,7 +335,6 @@
                 <div class="card">
                     <div class="card-header">
                         <h3><i class="bi bi-images"></i> {{ entry.name }}
-                            <span class="badge bg-secondary">{{ images.count }} image{{ images.count|pluralize }}</span>
                         </h3>
                     </div>
                     <div class="card-body">
@@ -443,7 +438,6 @@
                 <div class="card">
                     <div class="card-header">
                         <h3><i class="bi bi-camera"></i> User Prints
-                            <span class="badge bg-secondary">{{ user_prints.count }} image{{ user_prints.count|pluralize }}</span>
                         </h3>
                     </div>
                     <div class="card-body">
