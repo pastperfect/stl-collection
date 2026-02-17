@@ -157,7 +157,7 @@
                 <h3><i class="bi bi-upload"></i> Upload New STL</h3>
             </div>
             <div class="card-body">
-                <form method="post" enctype="multipart/form-data">
+                <form id="uploadForm" method="post" enctype="multipart/form-data">
                     {% csrf_token %}
                       <div class="mb-3">
                         <label for="id_image" class="form-label">Image Files *</label>
@@ -377,7 +377,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const uploadForm = document.querySelector('form');
+    const uploadForm = document.getElementById('uploadForm');
     const fileInput = document.getElementById('id_image');
     const nameInput = document.getElementById('{{ form.name.id_for_label }}');
     const publisherInput = document.getElementById('{{ form.publisher.id_for_label }}');
@@ -411,6 +411,56 @@ document.addEventListener('DOMContentLoaded', function() {
     const progressPercent = document.getElementById('uploadProgressPercent');
     const submitBtn = document.getElementById('submitBtn');
     const originalSubmitContent = submitBtn ? submitBtn.innerHTML : '';
+    const hasBootstrapModal = typeof bootstrap !== 'undefined' && bootstrap.Modal;
+    let fallbackBackdrop = null;
+
+    function setProgress(value, text) {
+        if (!progressBar) return;
+        const percent = Math.min(Math.max(Math.round(value), 0), 100);
+        progressBar.style.width = `${percent}%`;
+        progressBar.setAttribute('aria-valuenow', percent.toString());
+        progressBar.textContent = `${percent}%`;
+        if (progressPercent) {
+            progressPercent.textContent = `${percent}%`;
+        }
+        if (progressText && text) {
+            progressText.textContent = text;
+        }
+    }
+
+    function showProgressModal() {
+        setProgress(0, 'Preparing files...');
+        if (progressModalEl && hasBootstrapModal) {
+            const modal = new bootstrap.Modal(progressModalEl, {backdrop: 'static', keyboard: false});
+            modal.show();
+            return modal;
+        } else if (progressModalEl) {
+            progressModalEl.classList.add('show', 'd-block');
+            progressModalEl.style.display = 'block';
+            document.body.classList.add('modal-open');
+            document.body.style.overflow = 'hidden';
+            fallbackBackdrop = document.createElement('div');
+            fallbackBackdrop.className = 'modal-backdrop fade show';
+            document.body.appendChild(fallbackBackdrop);
+        }
+        return null;
+    }
+
+    function hideProgressModal(modalInstance) {
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+        if (progressModalEl) {
+            progressModalEl.classList.remove('show', 'd-block');
+            progressModalEl.style.display = '';
+        }
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        if (fallbackBackdrop) {
+            fallbackBackdrop.remove();
+            fallbackBackdrop = null;
+        }
+    }
     
     let selectedFiles = [];
     let selectedStlFiles = [];
@@ -888,34 +938,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 const formData = new FormData(uploadForm);
-                const modal = progressModalEl ? new bootstrap.Modal(progressModalEl, {backdrop: 'static', keyboard: false}) : null;
+                const modalInstance = showProgressModal();
 
                 const resetButton = () => {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = originalSubmitContent;
                 };
 
-                const setProgress = (value, text) => {
-                    if (!progressBar) return;
-                    const percent = Math.min(Math.max(Math.round(value), 0), 100);
-                    progressBar.style.width = `${percent}%`;
-                    progressBar.setAttribute('aria-valuenow', percent.toString());
-                    progressBar.textContent = `${percent}%`;
-                    if (progressPercent) {
-                        progressPercent.textContent = `${percent}%`;
-                    }
-                    if (progressText && text) {
-                        progressText.textContent = text;
-                    }
-                };
-
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
-
-                if (modal) {
-                    setProgress(0, 'Preparing files...');
-                    modal.show();
-                }
 
                 const xhr = new XMLHttpRequest();
                 xhr.open('POST', uploadForm.action || window.location.pathname);
@@ -937,14 +968,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.location.href = target;
                     } else {
                         alert('Upload failed. Please try again.');
-                        if (modal) modal.hide();
+                        hideProgressModal(modalInstance);
                         resetButton();
                     }
                 };
 
                 xhr.onerror = function() {
                     alert('Network error during upload.');
-                    if (modal) modal.hide();
+                    hideProgressModal(modalInstance);
                     resetButton();
                 };
 
