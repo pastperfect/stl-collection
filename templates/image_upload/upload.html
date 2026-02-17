@@ -357,8 +357,27 @@
     </div>
 </div>
 
+<!-- Upload progress modal -->
+<div class="modal fade" id="uploadProgressModal" tabindex="-1" aria-labelledby="uploadProgressLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadProgressLabel"><i class="bi bi-cloud-upload"></i> Uploading...</h5>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2" id="uploadProgressText">Preparing files...</p>
+                <div class="progress mb-2" role="progressbar" aria-label="Upload progress">
+                    <div class="progress-bar" id="uploadProgressBar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                </div>
+                <small class="text-muted" id="uploadProgressPercent">0%</small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.querySelector('form');
     const fileInput = document.getElementById('id_image');
     const nameInput = document.getElementById('{{ form.name.id_for_label }}');
     const publisherInput = document.getElementById('{{ form.publisher.id_for_label }}');
@@ -385,6 +404,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const stlFileCount = document.getElementById('stlFileCount');
     const stlBrowseBtn = document.getElementById('stlBrowseBtn');
     const stlClearAllBtn = document.getElementById('stlClearAllBtn');
+
+    const progressModalEl = document.getElementById('uploadProgressModal');
+    const progressBar = document.getElementById('uploadProgressBar');
+    const progressText = document.getElementById('uploadProgressText');
+    const progressPercent = document.getElementById('uploadProgressPercent');
+    const submitBtn = document.getElementById('submitBtn');
+    const originalSubmitContent = submitBtn ? submitBtn.innerHTML : '';
     
     let selectedFiles = [];
     let selectedStlFiles = [];
@@ -850,6 +876,81 @@ document.addEventListener('DOMContentLoaded', function() {
             {% endif %}
         });
     }
+
+        // Submit with progress indicator
+        if (uploadForm && submitBtn) {
+            uploadForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    alert('Please select at least one image file before uploading.');
+                    return;
+                }
+
+                const formData = new FormData(uploadForm);
+                const modal = progressModalEl ? new bootstrap.Modal(progressModalEl, {backdrop: 'static', keyboard: false}) : null;
+
+                const resetButton = () => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalSubmitContent;
+                };
+
+                const setProgress = (value, text) => {
+                    if (!progressBar) return;
+                    const percent = Math.min(Math.max(Math.round(value), 0), 100);
+                    progressBar.style.width = `${percent}%`;
+                    progressBar.setAttribute('aria-valuenow', percent.toString());
+                    progressBar.textContent = `${percent}%`;
+                    if (progressPercent) {
+                        progressPercent.textContent = `${percent}%`;
+                    }
+                    if (progressText && text) {
+                        progressText.textContent = text;
+                    }
+                };
+
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
+
+                if (modal) {
+                    setProgress(0, 'Preparing files...');
+                    modal.show();
+                }
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', uploadForm.action || window.location.pathname);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+                xhr.upload.onprogress = function(event) {
+                    if (event.lengthComputable) {
+                        const percentComplete = (event.loaded / event.total) * 100;
+                        setProgress(percentComplete, 'Uploading...');
+                    } else {
+                        setProgress(0, 'Uploading...');
+                    }
+                };
+
+                xhr.onload = function() {
+                    if (xhr.status >= 200 && xhr.status < 400) {
+                        setProgress(100, 'Processing on server...');
+                        const target = xhr.responseURL || uploadForm.action || window.location.href;
+                        window.location.href = target;
+                    } else {
+                        alert('Upload failed. Please try again.');
+                        if (modal) modal.hide();
+                        resetButton();
+                    }
+                };
+
+                xhr.onerror = function() {
+                    alert('Network error during upload.');
+                    if (modal) modal.hide();
+                    resetButton();
+                };
+
+                xhr.send(formData);
+            });
+        }
 });
 </script>
 {% endblock %}
