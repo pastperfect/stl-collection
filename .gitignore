@@ -67,5 +67,6 @@ temp/
 # Manual Scripts
 Manual Scripts/test_bulk_import
 */*.csv
+Manual Scripts/bulk_uploads
 
 
