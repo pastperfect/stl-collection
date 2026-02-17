@@ -315,15 +315,6 @@
                     <form method="post" id="setPrimaryForm" action="" style="display: none;">
                         {% csrf_token %}
                     </form>
-                    <button type="button" id="setPrimaryBtn" class="btn btn-warning" onclick="document.getElementById('setPrimaryForm').submit();">
-                        <i class="bi bi-star"></i> Set as Primary
-                    </button>
-                    <form method="post" id="deleteImageForm" action="" onsubmit="return confirm('Delete this image? This cannot be undone.');" style="display: none;">
-                        {% csrf_token %}
-                    </form>
-                    <button type="button" id="deleteImageBtn" class="btn btn-danger" onclick="document.getElementById('deleteImageForm').submit();">
-                        <i class="bi bi-trash"></i> Delete Image
-                    </button>
                     <div class="card-body p-2">
                         <h6 class="card-title text-truncate" title="{{ related.name }}">{{ related.name }}</h6>
                         <a href="{% url 'image_details:detail' related.id %}" class="btn btn-sm btn-primary w-100">View</a>
