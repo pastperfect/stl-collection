@@ -29,24 +29,47 @@
 }
 
 .thumbnail-gallery {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 0.75rem;
     margin-top: 1rem;
-    padding: 1rem;
+    padding: 1rem 1rem 2rem;
     background: #f8f9fa;
     border-radius: 0.5rem;
+    position: relative;
+}
+
+.thumbnail-carousel {
+    position: relative;
+}
+
+.thumbnail-carousel .carousel-inner {
+    padding: 0.5rem 0;
+}
+
+.thumbnail-carousel .carousel-item {
+    display: none;
+    gap: 0.75rem;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
+    min-height: 120px;
+}
+
+.thumbnail-carousel .carousel-item.active,
+.thumbnail-carousel .carousel-item-next,
+.thumbnail-carousel .carousel-item-prev {
+    display: flex;
 }
 
 .thumbnail-item {
     position: relative;
-    aspect-ratio: 1;
+    width: 100px;
+    height: 100px;
     border: 3px solid transparent;
     border-radius: 0.5rem;
     overflow: hidden;
     cursor: pointer;
     transition: all 0.3s ease;
     background: white;
+    flex-shrink: 0;
 }
 
 .thumbnail-item:hover {
@@ -75,8 +98,62 @@
     object-fit: cover;
 }
 
+.thumbnail-carousel .carousel-control-prev,
+.thumbnail-carousel .carousel-control-next {
+    width: 40px;
+    height: 40px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.8;
+}
+
+.thumbnail-carousel .carousel-control-prev:hover,
+.thumbnail-carousel .carousel-control-next:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+    opacity: 1;
+}
+
+.thumbnail-carousel .carousel-control-prev {
+    left: -15px;
+}
+
+.thumbnail-carousel .carousel-control-next {
+    right: -15px;
+}
+
+.thumbnail-carousel .carousel-indicators {
+    position: relative;
+    margin: 0.75rem 0 0;
+    bottom: -0.5rem;
+}
+
+.thumbnail-carousel .carousel-indicators [data-bs-target] {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #dee2e6;
+    border: none;
+    opacity: 1;
+}
+
+.thumbnail-carousel .carousel-indicators .active {
+    background-color: #0d6efd;
+}
+
+@media (max-width: 576px) {
+    .carousel-item {
+        gap: 0.5rem;
+    }
+    .thumbnail-item {
+        width: 80px;
+        height: 80px;
+    }
+}
+
 .upload-thumbnail {
-    aspect-ratio: 1;
+    min-height: 80px;
     border: 2px dashed #dee2e6;
     border-radius: 0.5rem;
     background: white;
@@ -86,6 +163,7 @@
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s;
+    padding: 1rem;
 }
 
 .upload-thumbnail:hover {
@@ -177,20 +255,57 @@
                     {% endwith %}
                 </div>
                 
-                <!-- Thumbnail Gallery -->
-                <div class="thumbnail-gallery" id="thumbnailGallery">
-                    {% for img in images %}
-                    <div class="thumbnail-item {% if forloop.first %}active{% endif %} {% if img.is_primary %}primary{% endif %}" 
-                         data-image-id="{{ img.id }}"
-                         data-image-url="{{ img.image.url }}"
-                         data-is-primary="{{ img.is_primary|yesno:'true,false' }}"
-                         onclick="switchMainImage({{ img.id }}, '{{ img.image.url }}', {{ img.is_primary|yesno:'true,false' }})">
-                        <img src="{{ img.image.url }}" alt="{{ entry.name }}">
+                <!-- Thumbnail Carousel -->
+                <div class="thumbnail-gallery">
+                    {% if images.count > 0 %}
+                    <div id="thumbnailCarousel" class="carousel slide thumbnail-carousel" data-bs-ride="false">
+                        <!-- Carousel Indicators -->
+                        {% if images.count > 5 %}
+                        <div class="carousel-indicators">
+                            {% for img in images %}
+                            {% if forloop.counter0|divisibleby:5 %}
+                            {% widthratio forloop.counter0 5 1 as slide_index %}
+                            <button type="button" data-bs-target="#thumbnailCarousel" data-bs-slide-to="{{ slide_index }}" {% if forloop.first %}class="active"{% endif %}></button>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Carousel Items -->
+                        <div class="carousel-inner">
+                            {% for img in images %}
+                            {% if forloop.counter0|divisibleby:5 %}
+                            <div class="carousel-item {% if forloop.counter0 == 0 %}active{% endif %}">
+                            {% endif %}
+                                <div class="thumbnail-item {% if forloop.counter == 1 %}active{% endif %} {% if img.is_primary %}primary{% endif %}" 
+                                     data-image-id="{{ img.id }}"
+                                     data-image-url="{{ img.image.url }}"
+                                     data-is-primary="{{ img.is_primary|yesno:'true,false' }}"
+                                     onclick="switchMainImage({{ img.id }}, '{{ img.image.url }}', {{ img.is_primary|yesno:'true,false' }})">
+                                    <img src="{{ img.image.url }}" alt="{{ entry.name }}">
+                                </div>
+                            {% if forloop.counter|divisibleby:5 or forloop.last %}
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Carousel Controls -->
+                        {% if images.count > 5 %}
+                        <button class="carousel-control-prev" type="button" data-bs-target="#thumbnailCarousel" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Previous</span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#thumbnailCarousel" data-bs-slide="next">
+                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Next</span>
+                        </button>
+                        {% endif %}
                     </div>
-                    {% endfor %}
+                    {% endif %}
                     
                     {% if user.is_staff %}
-                    <div class="upload-thumbnail" id="uploadDropZone">
+                    <div class="upload-thumbnail mt-3" id="uploadDropZone">
                         <i class="bi bi-plus-circle"></i>
                         <span>Drag & Drop<br>or Click</span>
                     </div>
